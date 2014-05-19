@@ -45,6 +45,7 @@ TString TTemp_("");
 vector<double> lowPuBinEdeges_, truthPuMeans_;
 vector <vector<TF1*> > TF1DPUInclusive_;
 vector<TString> inputFolderNames_, inputTH2Names_; 
+vector<std::pair <double,double> > etaBins_;
 double quantilesLow_, quantilesHigh_;
 double lowPTConstFit_, highPTConstFit_;
 vector<TH1D*> cbValues_;

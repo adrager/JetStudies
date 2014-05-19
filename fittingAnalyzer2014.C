@@ -33,6 +33,9 @@
 #include "TStyle.h"
 #include "TList.h"
 #include "TROOT.h"
+#include "TVirtualFitter.h"
+#include "TGraphErrors.h"
+#include "TGraph2DErrors.h"
 //#include "functions.h"
 
 #ifndef _mal2_hpp_
@@ -40,6 +43,9 @@
 // variables
 double ptRangeLow_, ptRangeHigh_;
 bool debug_;
+vector<std::pair <double,double> > lowPuBinEdeges_;
+vector<std::pair <double,double> > etaBins_;
+std::vector<TString> ptBinTH1Names_;
 char buffer_[100];
 int n_;
 TString TTemp_("");
@@ -61,11 +67,14 @@ Double_t fSigmaOld (Double_t *x, Double_t *par);
 Double_t fSigmaNoPU (Double_t *x, Double_t *par);
 Double_t fSigmaTwoTerms (Double_t *x, Double_t *par);
 Double_t fSigma3Terms (Double_t *x, Double_t *par);
+Double_t fSigma3TermsMinus (Double_t *x, Double_t *par);
 Double_t fSigma4Terms (Double_t *x, Double_t *par);
-
+Double_t fSigma4TermsMinus (Double_t *x, Double_t *par);
+TGraphErrors* TGraphCreator(TH1D* inputTH1D, unsigned int etabin, unsigned int puBin, TFile* inputFile);
 void combinedPlots(vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TString name, bool rename);
 void differencePlots (vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TString name, vector<double> meanPUs);
 void PUInclusivePlots (unsigned int parameter, TString parName);
+
 //Double_t cb(Double_t *x, Double_t *par);
 //Double_t gauss (Double_t *x, Double_t *par);
 
@@ -76,14 +85,17 @@ void PUInclusivePlots (unsigned int parameter, TString parName);
 void fittingAnalyzer2014()
 {
 	gROOT->SetBatch(true);
-	ptRangeLow_=30;
+	ptRangeLow_=20;
 	ptRangeHigh_=1200;
 	cout<<"Analyzer started..."<<endl;
 
 	inF_ = TFile::Open("Fitting2014.root","UPDATE");
-	outF_ = new TFile("Results2014.root","RECREATE");
-	outF_->mkdir("Results");
-	OutPutD_ = (TDirectory*)outF_->Get("Results");
+	TFile * ptMeanFile = TFile::Open("PTBinsMeans.root","UPDATE");
+	int nn = sprintf(buffer_,"Results2014_ptRange_%.0f_%.0f.root",ptRangeLow_,ptRangeHigh_); // mean1
+	TTemp_ = buffer_;
+	outF_ = new TFile(TTemp_,"RECREATE");
+	outF_->mkdir(TTemp_);
+	OutPutD_ = (TDirectory*)outF_->Get(TTemp_);
 	TH1D *TruthPUMeans = (TH1D*) inF_->Get("TruthPUMeans")->Clone();
 	vector<double> meanPUs;
 	for(int i=0; i < 4; i++)
@@ -91,10 +103,45 @@ void fittingAnalyzer2014()
 		cout<<"Truth mean Pileups"<<TruthPUMeans->GetBinContent(i+1)<<endl;
 		meanPUs.push_back(TruthPUMeans->GetBinContent(i+1));
 	}
-	inputFolderNames_.push_back("MCTruthResolPUEta0"); inputFolderNames_.push_back("MCTruthResolPUEta1"); inputFolderNames_.push_back("MCTruthResolPUEta2"); inputFolderNames_.push_back("MCTruthResolPUEta3"); inputFolderNames_.push_back("MCTruthResolPUEta4"); 
+	inputFolderNames_.push_back("MCTruthResolPUEta00"); 	etaBins_.push_back(std::make_pair(0.0,0.1) );
+	inputFolderNames_.push_back("MCTruthResolPUEta01"); 	etaBins_.push_back(std::make_pair(0.1,0.2) );
+	inputFolderNames_.push_back("MCTruthResolPUEta02"); 	etaBins_.push_back(std::make_pair(0.2,0.3) );
+	inputFolderNames_.push_back("MCTruthResolPUEta03"); 	etaBins_.push_back(std::make_pair(0.3,0.4) );
+	inputFolderNames_.push_back("MCTruthResolPUEta04"); 	etaBins_.push_back(std::make_pair(0.4,0.5) );
+	inputFolderNames_.push_back("MCTruthResolPUEta05"); 	etaBins_.push_back(std::make_pair(0.5,0.6) );
+	inputFolderNames_.push_back("MCTruthResolPUEta06"); 	etaBins_.push_back(std::make_pair(0.6,0.7) );
+	inputFolderNames_.push_back("MCTruthResolPUEta07"); 	etaBins_.push_back(std::make_pair(0.7,0.8) );
+	inputFolderNames_.push_back("MCTruthResolPUEta08"); 	etaBins_.push_back(std::make_pair(0.8,0.9) );
+	inputFolderNames_.push_back("MCTruthResolPUEta09"); 	etaBins_.push_back(std::make_pair(0.9,1.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta10"); 	etaBins_.push_back(std::make_pair(1.0,1.1) );
+	inputFolderNames_.push_back("MCTruthResolPUEta11"); 	etaBins_.push_back(std::make_pair(1.1,1.2) );
+	inputFolderNames_.push_back("MCTruthResolPUEta12"); 	etaBins_.push_back(std::make_pair(1.2,1.3) );
+	inputFolderNames_.push_back("MCTruthResolPUEta13"); 	etaBins_.push_back(std::make_pair(1.3,1.4) );
+	inputFolderNames_.push_back("MCTruthResolPUEta14"); 	etaBins_.push_back(std::make_pair(1.4,1.5) );
+	inputFolderNames_.push_back("MCTruthResolPUEta15"); 	etaBins_.push_back(std::make_pair(1.5,1.6) );
+	inputFolderNames_.push_back("MCTruthResolPUEta16"); 	etaBins_.push_back(std::make_pair(1.6,1.7) );
+	inputFolderNames_.push_back("MCTruthResolPUEta17"); 	etaBins_.push_back(std::make_pair(1.7,1.8) );
+	inputFolderNames_.push_back("MCTruthResolPUEta18"); 	etaBins_.push_back(std::make_pair(1.8,1.9) );
+	inputFolderNames_.push_back("MCTruthResolPUEta19"); 	etaBins_.push_back(std::make_pair(1.9,2.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta20"); 	etaBins_.push_back(std::make_pair(2.0,2.1) );
+	inputFolderNames_.push_back("MCTruthResolPUEta21"); 	etaBins_.push_back(std::make_pair(2.1,2.2) );
+	inputFolderNames_.push_back("MCTruthResolPUEta22"); 	etaBins_.push_back(std::make_pair(2.2,2.3) );
+	inputFolderNames_.push_back("MCTruthResolPUEta23"); 	etaBins_.push_back(std::make_pair(2.3,2.4) );
+	inputFolderNames_.push_back("MCTruthResolPUEta24"); 	etaBins_.push_back(std::make_pair(2.4,2.5) );
+	inputFolderNames_.push_back("MCTruthResolPUEta25"); 	etaBins_.push_back(std::make_pair(2.5,3.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta26"); 	etaBins_.push_back(std::make_pair(3.0,5.0) );
 	inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU0"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU1"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU2"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU3"); 
+	lowPuBinEdeges_.push_back(std::make_pair(0,10) );
+	lowPuBinEdeges_.push_back(std::make_pair(10,20) );
+	lowPuBinEdeges_.push_back(std::make_pair(20,30) );
+	lowPuBinEdeges_.push_back(std::make_pair(30,50) );
+	lowPuBinEdeges_.push_back(std::make_pair(50,1000) );
 	TString cbFittingProcedure("NoFixFitting");
 	TH1D *inputTH1D = new TH1D();
+	TGraphErrors *inputGraph = new TGraphErrors();
+	TH1D *inputTH1DError = new TH1D();
+	TH1D *inputTH1DErrorG = new TH1D();
+	TGraphErrors *inputGraphError = new TGraphErrors();
 	PUInclusivePlots(0,"Normalization");
 	PUInclusivePlots(1,"Gaus Mean");
 	PUInclusivePlots(2,"Gaus Sigma");
@@ -106,71 +153,104 @@ void fittingAnalyzer2014()
 	// Plotting of all fit values for puinclusive each inputFolderNames_ within one histogramm
 	for (unsigned int i=0; i < inputFolderNames_.size(); i++)
 	{
+		TString EtaBin("ErrorNoEtaBinNameSelected");
+//		if(i==0) EtaBin="[0,0.5]";
+//		if(i==1) EtaBin="[0.5,1.1]";
+//		if(i==2) EtaBin="[1.1,1.7]";
+//		if(i==3) EtaBin="[1.7,2.3]";
+//		if(i==4) EtaBin="[2.3,5.0]";
 		char buffer[100];
 		int n;
 		TString TTemp("");
+		n = sprintf(buffer,"[%.1f,%.1f]",etaBins_[i].first,etaBins_[i].second);
+		TTemp=buffer;
+		EtaBin=TTemp;
 		vector<TH1D*> th1ds;
 		double noPuResult[3] ={0,0,0};
+		double noPuResultG[3] ={0,0,0};
+		double PuResultG[4] ={0,0,0,0};
 		n = sprintf(buffer,"Eta: %d, sigma of gauss core",i);
 		TTemp=buffer;
 		TCanvas *cCanvas2 = new TCanvas(TTemp_,TTemp_);
 		TLegend *lLeg2 = new TLegend(0.3,0.7,0.9,0.9);
+		lLeg2->SetFillColor(0);
+		TCanvas *cCanvas2G = new TCanvas(TTemp_+"G",TTemp_+"G");
+		TLegend *lLeg2G = new TLegend(0.3,0.7,0.9,0.9);
+		lLeg2G->SetFillColor(0);
 		for(unsigned int ii=0; ii < inputTH2Names_.size();ii++)
 		{
-
 			
-			n = sprintf(buffer,"Eta: %d, NPU: %d",i,ii); // mean1
+			n = sprintf(buffer,"NPU[%.0f]",meanPUs[ii]); // mean1
 			TTemp = buffer;
 			cout<<"Round:"<<inputFolderNames_[i]<<", "<<inputTH2Names_[ii]<<endl;
 			TTemp_ = "CB_FitValue2_"+inputFolderNames_[i] + "_" + inputTH2Names_[ii];
 			cout<<"inputTh1D"<<TTemp_<<endl;
 			inputTH1D =      (TH1D*) ((TDirectory*)((TDirectory*) ((TDirectory*) inF_->Get(inputFolderNames_[i]) )->Get(inputTH2Names_[ii]))->Get(cbFittingProcedure))->Get(TTemp_)->Clone();
+			unsigned int nbinsX = inputTH1D->GetNbinsX();
+			//std::cout<<"Number of nBinsX"<<nbinsX<<std::endl;
+			Double_t *xbins = new Double_t[nbinsX];
+			inputTH1D->GetXaxis()->GetLowEdge(xbins);
+			//for(int iii=0; iii< nbinsX;iii++)std::cout<<"bin["<<iii<<"]: "<<xbins[iii];
+			//std::cout<<std::endl;
+			inputTH1DError = new TH1D("ErrorBand"+TTemp, ".95 conf.band",nbinsX-1, xbins );
+			inputTH1DErrorG = new TH1D("ErrorBand"+TTemp, ".95 conf.band",nbinsX-1, xbins );
 			th1ds.push_back( (TH1D*) ((TDirectory*)((TDirectory*) ((TDirectory*) inF_->Get(inputFolderNames_[i]) )->Get(inputTH2Names_[ii]))->Get(cbFittingProcedure))->Get(TTemp_)->Clone() );
 			TCanvas *cCanvas = new TCanvas(TTemp_,TTemp_);
 			TLegend *lLeg = new TLegend(0.3,0.7,0.9,0.9);
+			lLeg->SetFillColor(0);
 			cCanvas->cd();
 			cCanvas->SetName(TTemp_);
 			cCanvas->SetTitle("Crystal Ball: Gaus Sigma");
 			inputTH1D->SetMarkerColor(1);
 			inputTH1D->SetMarkerSize(2);
 			inputTH1D->SetLineColor(ii+1);
-			inputTH1D->SetLineWidth(2);
-			inputTH1D->SetMarkerStyle(21);
+			inputTH1D->SetLineWidth(0);
+			inputTH1D->SetMarkerStyle(20);
 			inputTH1D->SetMarkerSize(1);
 			inputTH1D->SetMarkerColor(ii+1);
 			lLeg->AddEntry(inputTH1D,TTemp,"f");
 			if(ii==0)
 			{
-				TF1 *fNoPU = new TF1 ("fNoPU",fSigma3Terms, ptRangeLow_,ptRangeHigh_,3);
-				fNoPU->SetParameters(0.03,1.8,0.7);
-				fNoPU->SetLineColor(ii+1);
-				fNoPU->SetParLimits(0,0,100);
-				fNoPU->SetParLimits(1,0,100);
-				fNoPU->SetParLimits(2,0,100);
-				inputTH1D->Fit(fNoPU,"RB+");
-				n = sprintf(buffer,"PU[%d],y=sqrt([%.3f]^2 + [%.3f]^2/x + [%.4f]^2/x^2 ",ii,fNoPU->GetParameter(0),fNoPU->GetParameter(1),fNoPU->GetParameter(2)); // mean1
+				TF1 *fNoPUMinus = new TF1 ("fNoPUMinus",fSigma3TermsMinus, ptRangeLow_,ptRangeHigh_,3);
+				fNoPUMinus->SetParameters(0.03,1.8,0.7);
+				fNoPUMinus->SetLineColor(12);
+				fNoPUMinus->SetParLimits(0,0,100);
+				fNoPUMinus->SetParLimits(1,0,100);
+				fNoPUMinus->SetParLimits(2,-100,100);
+				inputTH1D->GetXaxis()->SetRange(inputTH1D->GetXaxis()->FindBin(ptRangeLow_),inputTH1D->GetXaxis()->FindBin(ptRangeHigh_));
+				inputTH1D->SetTitle("Gauss #sigma Eta:"+EtaBin);
+				inputTH1D->SetMaximum(inputTH1D->GetMaximum()*1.6);
+				inputTH1D->Fit(fNoPUMinus,"QBRI+");
+				(TVirtualFitter::GetFitter())->GetConfidenceIntervals(inputTH1DError);
+				inputTH1DError->GetXaxis()->SetRange(inputTH1D->GetXaxis()->FindBin(ptRangeLow_),inputTH1D->GetXaxis()->FindBin(ptRangeHigh_));
+				n = sprintf(buffer,"y=sqrt([%.3f]^2 + [%.3f]^2/x + [%.4f]^2/x^2 ",fNoPUMinus->GetParameter(0),fNoPUMinus->GetParameter(1),fNoPUMinus->GetParameter(2)); // mean1
+				TTemp = TTemp+","+buffer;
+				lLeg->AddEntry(fNoPUMinus,TTemp,"f");
+				lLeg2->AddEntry(fNoPUMinus,TTemp,"f");
+				n = sprintf(buffer,"Error=%.3f, %.3f, %.4f",fNoPUMinus->GetParError(0),fNoPUMinus->GetParError(1),fNoPUMinus->GetParError(2)); // mean1
 				TTemp = buffer;
-				lLeg->AddEntry(fNoPU,TTemp,"f");
-				lLeg2->AddEntry(fNoPU,TTemp,"f");
-				n = sprintf(buffer,"Error=%.3f, %.3f, %.4f",fNoPU->GetParError(0),fNoPU->GetParError(1),fNoPU->GetParError(2)); // mean1
-				TTemp = buffer;
-				lLeg->AddEntry(fNoPU,TTemp,"f");
-				noPuResult[0]= fNoPU->GetParameter(0);
-				noPuResult[1]= fNoPU->GetParameter(1);
-				noPuResult[2]=fNoPU->GetParameter(2);
+				lLeg->AddEntry(fNoPUMinus,TTemp,"f");
+				noPuResult[0]= fNoPUMinus->GetParameter(0);
+				noPuResult[1]= fNoPUMinus->GetParameter(1);
+				noPuResult[2]=fNoPUMinus->GetParameter(2);
+
 			}
 			if(ii>0)
 			{
-				TF1 *fPileup = new TF1 ("PileUpIncluded",fSigma4Terms,ptRangeLow_,ptRangeHigh_,4);
+				TF1 *fPileup = new TF1 ("PileUpIncluded",fSigma4TermsMinus,ptRangeLow_,ptRangeHigh_,4);
 				fPileup->SetParameters(noPuResult[0],noPuResult[1],noPuResult[2],noPuResult[2]);
 				fPileup->FixParameter(0,noPuResult[0]);
 				fPileup->FixParameter(1,noPuResult[1]);
 				fPileup->FixParameter(2,noPuResult[2]);
 				fPileup->SetParLimits(3,0,100);
 				fPileup->SetLineColor(ii+1);
-				inputTH1D->Fit(fPileup,"R+");
-				n = sprintf(buffer,"PU[%d],y= sqrt([%.3f]^2 + [%.3f]^2/x + [%.4f]^2/x^2 + [%.3f]^2/x^2",ii,fPileup->GetParameter(0),fPileup->GetParameter(1),fPileup->GetParameter(2),fPileup->GetParameter(3)); // mean1
-				TTemp = buffer;
+				inputTH1D->GetXaxis()->SetRange(inputTH1D->GetXaxis()->FindBin(ptRangeLow_),inputTH1D->GetXaxis()->FindBin(ptRangeHigh_));
+				inputTH1D->SetMaximum(inputTH1D->GetMaximum()*1.6);
+				inputTH1D->Fit(fPileup,"QRBI+");
+				(TVirtualFitter::GetFitter())->GetConfidenceIntervals(inputTH1DError);
+				inputTH1DError->GetXaxis()->SetRange(inputTH1D->GetXaxis()->FindBin(ptRangeLow_),inputTH1D->GetXaxis()->FindBin(ptRangeHigh_));
+				n = sprintf(buffer,"y= sqrt([%.3f]^2 + [%.3f]^2/x + [%.4f]^2/x^2 + [%.3f]^2/x^2",fPileup->GetParameter(0),fPileup->GetParameter(1),fPileup->GetParameter(2),fPileup->GetParameter(3)); // mean1
+				TTemp = TTemp +","+ buffer;
 				lLeg->AddEntry(fPileup,TTemp,"f");
 				lLeg2->AddEntry(fPileup,TTemp,"f");
 				n = sprintf(buffer,"Error=%.3f, %.3f, %.4f, %.3f,",fPileup->GetParError(0),fPileup->GetParError(1),fPileup->GetParError(2),fPileup->GetParError(3)); // mean1
@@ -178,40 +258,300 @@ void fittingAnalyzer2014()
 				lLeg->AddEntry(fPileup,TTemp,"f");
 			}
 			cCanvas->cd();
+			gStyle->SetErrorX(0);
+			inputTH1D->SetStats(kFALSE);
 			inputTH1D->Draw("P");
-			//cCanvas->SetLogy();
+			inputTH1DError->SetStats(kFALSE);
+			inputTH1DError->SetFillStyle(0);
+		//	inputTH1DError->SetLineStyle(2);
+			inputTH1DError->SetFillColor(ii+1);
+		//	inputTH1DError->SetLineColor(ii+1);
+			if(ii==0) inputTH1DError->SetFillColor(12);
+			inputTH1DError->Draw("e3 same");
+			cCanvas->SetLogy();
 			cCanvas->SetLogx();
 			lLeg->Draw();
 			cCanvas->Update();
 			outF_->cd();
 			cCanvas->Write();
 			cCanvas2->cd();
-			if(ii==0)inputTH1D->Draw("P");
-			if(ii>0)inputTH1D->Draw("PSame");
+			if(ii==0)
+			{
+				inputTH1D->Draw("P");
+				inputTH1DError->Draw("e3 same");
+			}
+			if(ii>0)
+			{
+				inputTH1D->Draw("PSame");
+				inputTH1DError->Draw("e3 same");
+			}
 			cCanvas2->Update();
 			delete cCanvas;
 			delete lLeg;
-			//delete inputTH1D;
+			// tgraph stuff
+			n = sprintf(buffer,"NPU[%.0f]",meanPUs[ii]); // mean1
+			TTemp = buffer;
+			TTemp_ = "CB_FitValue2_"+inputFolderNames_[i] + "_" + inputTH2Names_[ii];
+			inputGraph = TGraphCreator(inputTH1D, i,ii,ptMeanFile);
+			inputGraph->SetTitle("Gauss #sigma Eta:"+EtaBin);
+			inputGraph->SetMarkerColor(ii+1);
+			std::cout<<std::endl;
+			TCanvas *cCanvasG = new TCanvas(TTemp_+"G",TTemp_+"G",200,10,700,500);
+			TLegend *lLegG = new TLegend(0.3,0.7,0.9,0.9);
+			lLegG->SetFillColor(0);
+			cCanvasG->cd();
+			cCanvasG->SetName(TTemp_+"G");
+			cCanvasG->SetTitle("Crystal Ball: Gaus Sigma(Graph)");
+			lLegG->AddEntry(inputGraph,TTemp+"G","f");
+			if(ii==0)
+			{
+				TF1 *fNoPUMinus = new TF1 ("fNoPUMinus",fSigma3TermsMinus, ptRangeLow_,ptRangeHigh_,3);
+				fNoPUMinus->SetParameters(noPuResult[0],noPuResult[1],noPuResult[2]);
+				fNoPUMinus->SetLineColor(12);
+			//	fNoPUMinus->SetParLimits(noPuResult[0],noPuResult[0]*0.3,noPuResult[0]*2);
+			//	fNoPUMinus->SetParLimits(noPuResult[1],noPuResult[1]*0.3,noPuResult[1]*2);
+			//	fNoPUMinus->SetParLimits(noPuResult[2],noPuResult[2]*0.3,noPuResult[2]*2);
+				// do the advanced fitting
+				ROOT::Math::WrappedMultiTF1 fSigma3TermsMinus(*fNoPUMinus,1);
+				ROOT::Fit::DataOptions opt; 
+				ROOT::Fit::DataRange rangeTGraph;
+				rangeTGraph.SetRange(ptRangeLow_,ptRangeHigh_);
+				ROOT::Fit::BinData dataTGraph(opt,rangeTGraph);
+				ROOT::Fit::FillData(dataTGraph, inputGraph);
+				ROOT::Fit::Chi2Function chi2_CB(dataTGraph, fSigma3TermsMinus);
+				ROOT::Fit::Fitter fitter;
+				fitter.Config().SetParamsSettings(3,noPuResult);
+				//fitter.Config().MinimizerOptions().SetMinimizerType("Genetic");
+				//fitter.Config().SetMinimizer("Minuit2","Migrad");
+				//fitter.Config().SetMinimizer("GSLMultiMin","BFGS");// bad results
+			//	fitter.Config().MinimizerOptions().SetMinimizerType("GSLSimAn"); // bad result
+				//fitter.Config().MinimizerOptions().SetMinimizerType("Fumili"); // bad result
+				fitter.Config().SetMinimizer("Minuit","Migrad");
+				//fitter.Config().MinimizerOptions().SetMinimizerType("Minuit2","Migrad");
+				if(noPuResult[0]>0)fitter.Config().ParSettings(0).SetLimits(noPuResult[0]* 0.4,noPuResult[0]*1.8);
+				else fitter.Config().ParSettings(0).SetLimits(noPuResult[0]* 1.8,noPuResult[0]*0.4);
+				if(noPuResult[1]>0)fitter.Config().ParSettings(1).SetLimits(noPuResult[1]* 0.4,noPuResult[1]*1.8);
+				else fitter.Config().ParSettings(1).SetLimits(noPuResult[1]* 1.8,noPuResult[1]*0.4);
+				if(noPuResult[2]>0)fitter.Config().ParSettings(2).SetLimits(noPuResult[2]* 0.4,noPuResult[2]*1.8);
+				else fitter.Config().ParSettings(2).SetLimits(noPuResult[2]* 1.8,noPuResult[2]*0.4);
+			
+				//fitter.Config().ParSettings(0).SetLimits(0,10);
+				fitter.Config().ParSettings(0).SetStepSize(0.01);
+				//fitter.Config().ParSettings(1).SetLimits(0,10);
+				fitter.Config().ParSettings(1).SetStepSize(0.01);
+				//fitter.Config().ParSettings(2).SetLimits(-10,10);
+				fitter.Config().ParSettings(2).SetStepSize(0.01);
+				fitter.FitFCN(chi2_CB,0,dataTGraph.Size(),true);
+				ROOT::Fit::FitResult resultprint = fitter.Result();
+				resultprint.Print(std::cout);
+				fNoPUMinus->SetFitResult( resultprint, 0);
+				fNoPUMinus->SetNDF(resultprint.Ndf());
+				fNoPUMinus->SetChisquare(resultprint.Chi2());
+				inputGraph->GetListOfFunctions()->Add(fNoPUMinus);
+				
+				//inputGraph->Fit(fNoPUMinus,"QMBR+");
+				inputGraphError = new TGraphErrors(inputGraph->GetN());
+				inputGraphError->SetTitle("Gauss #sigma Eta:"+EtaBin);
+				for (unsigned int iii=0; iii<inputGraph->GetN();iii++)
+				{
+					inputGraphError->SetPoint(iii, inputGraph->GetX()[iii], 0);
+				//std::cout<<"GraphValues ["<<ii<<"]: "<<inputGraph->GetX()[ii]<<", ";
+				}
+				(TVirtualFitter::GetFitter())->GetConfidenceIntervals(inputTH1DErrorG);
+				//inputTH1DErrorG->GetXaxis()->SetRange(inputTH1D->GetXaxis()->FindBin(ptRangeLow_),inputTH1D->GetXaxis()->FindBin(ptRangeHigh_));
+				n = sprintf(buffer,"y=sqrt([%.3f]^2 + [%.3f]^2/x + [%.4f]^2/x^2 ",fNoPUMinus->GetParameter(0),fNoPUMinus->GetParameter(1),fNoPUMinus->GetParameter(2)); // mean1
+				TTemp = TTemp+","+buffer;
+				lLegG->AddEntry(fNoPUMinus,TTemp,"f");
+				lLeg2G->AddEntry(fNoPUMinus,TTemp,"f");
+				n = sprintf(buffer,"Error=%.3f, %.3f, %.4f",fNoPUMinus->GetParError(0),fNoPUMinus->GetParError(1),fNoPUMinus->GetParError(2)); // mean1
+				TTemp = buffer;
+				lLegG->AddEntry(fNoPUMinus,TTemp,"f");
+				noPuResultG[0]= fNoPUMinus->GetParameter(0);
+				noPuResultG[1]= fNoPUMinus->GetParameter(1);
+				noPuResultG[2]=fNoPUMinus->GetParameter(2);
+				PuResultG[0]=fNoPUMinus->GetParameter(0);
+				PuResultG[1]=fNoPUMinus->GetParameter(1);
+				PuResultG[2]=fNoPUMinus->GetParameter(2);
+				PuResultG[3]=fNoPUMinus->GetParameter(2);
+			}
+			if(ii>0)
+			{
+				TF1 *fPileup = new TF1 ("PileUpIncluded",fSigma4TermsMinus,ptRangeLow_,ptRangeHigh_,4);
+				fPileup->SetParameters(noPuResultG[0],noPuResultG[1],noPuResultG[2],noPuResultG[2]);
+				fPileup->FixParameter(0,noPuResultG[0]);
+				fPileup->FixParameter(1,noPuResultG[1]);
+				fPileup->FixParameter(2,noPuResultG[2]);
+				fPileup->SetParLimits(3,0,100);
+				fPileup->SetLineColor(ii+1);
+				ROOT::Math::WrappedMultiTF1 fSigma4TermsMinus(*fPileup,1);
+				ROOT::Fit::DataOptions opt; 
+				ROOT::Fit::DataRange rangeTGraph;
+				rangeTGraph.SetRange(ptRangeLow_,ptRangeHigh_);
+				ROOT::Fit::BinData dataTGraph(opt,rangeTGraph);
+				ROOT::Fit::FillData(dataTGraph, inputGraph);
+				ROOT::Fit::Chi2Function chi2_CB(dataTGraph, fSigma4TermsMinus);
+				ROOT::Fit::Fitter fitter;
+				fitter.Config().SetParamsSettings(4,PuResultG);
+				//fitter.Config().MinimizerOptions().SetMinimizerType("Genetic");
+				//fitter.Config().SetMinimizer("Minuit2","Migrad");
+				//fitter.Config().SetMinimizer("GSLMultiMin","BFGS"); // bad results
+				//fitter.Config().MinimizerOptions().SetMinimizerType("GSLSimAn");// bad result
+				//fitter.Config().MinimizerOptions().SetMinimizerType("Fumili");  //bad result
+				fitter.Config().SetMinimizer("Minuit","Migrad");
+				//fitter.Config().MinimizerOptions().SetMinimizerType("Minuit2","Migrad");
+			/*	if(noPuResult[0]>0)fitter.Config().ParSettings(0).SetLimits(noPuResult[0]* 0.4,noPuResult[0]*1.8);
+				else fitter.Config().ParSettings(0).SetLimits(noPuResult[0]* 1.8,noPuResult[0]*0.4);
+				if(noPuResult[1]>0)fitter.Config().ParSettings(1).SetLimits(noPuResult[1]* 0.4,noPuResult[1]*1.8);
+				else fitter.Config().ParSettings(1).SetLimits(noPuResult[1]* 1.8,noPuResult[1]*0.4);
+				if(noPuResult[2]>0)fitter.Config().ParSettings(2).SetLimits(noPuResult[2]* 0.4,noPuResult[2]*1.8);
+				else fitter.Config().ParSettings(2).SetLimits(noPuResult[2]* 1.8,noPuResult[2]*0.4);
+			*/
+				fitter.Config().ParSettings(0).Fix();
+				fitter.Config().ParSettings(1).Fix();
+				fitter.Config().ParSettings(2).Fix();
+				fitter.Config().ParSettings(3).SetLimits(0,20);
+				fitter.Config().ParSettings(3).SetStepSize(0.01);
+				fitter.FitFCN(chi2_CB,0,dataTGraph.Size(),true);
+				ROOT::Fit::FitResult resultprint = fitter.Result();
+				resultprint.Print(std::cout);
+				fPileup->SetFitResult( resultprint, 0);
+				fPileup->SetNDF(resultprint.Ndf());
+				fPileup->SetChisquare(resultprint.Chi2());
+				inputGraph->GetListOfFunctions()->Add(fPileup);
+				inputGraphError = new TGraphErrors(inputGraph->GetN());
+				inputGraphError->SetTitle("Gauss #sigma Eta:"+EtaBin);
+				for (unsigned int iii=0; iii<inputGraph->GetN();iii++)
+				{
+					inputGraphError->SetPoint(iii, inputGraph->GetX()[iii], 0);
+				//std::cout<<"GraphValues ["<<ii<<"]: "<<inputGraph->GetX()[ii]<<", ";
+				}
+				(TVirtualFitter::GetFitter())->GetConfidenceIntervals(inputTH1DErrorG);
+				//inputTH1DErrorG->GetXaxis()->SetRange(inputTH1D->GetXaxis()->FindBin(ptRangeLow_),inputTH1D->GetXaxis()->FindBin(ptRangeHigh_));
+				n = sprintf(buffer,"y= sqrt([%.3f]^2 + [%.3f]^2/x + [%.4f]^2/x^2 + [%.3f]^2/x^2",fPileup->GetParameter(0),fPileup->GetParameter(1),fPileup->GetParameter(2),fPileup->GetParameter(3)); // mean1
+				TTemp = TTemp +","+ buffer;
+				lLegG->AddEntry(fPileup,TTemp,"f");
+				lLeg2G->AddEntry(fPileup,TTemp,"f");
+				n = sprintf(buffer,"Error=%.3f, %.3f, %.4f, %.3f,",fPileup->GetParError(0),fPileup->GetParError(1),fPileup->GetParError(2),fPileup->GetParError(3)); // mean1
+				TTemp = buffer;
+				lLegG->AddEntry(fPileup,TTemp,"f");
+			}
+			cCanvasG->cd();
+//			inputGraphError->SetLineColor(kRed);
+//			inputGraphError->Draw("e3 AP");
+			inputGraph->GetXaxis()->SetLimits(ptRangeLow_*0.9, ptRangeHigh_*1.1);
+			inputGraph->SetMarkerColor(ii+1);
+			inputGraph->SetMarkerSize(1);
+			inputGraph->SetMarkerStyle(20);
+			inputGraph->SetLineColor(ii+1);
+			inputGraph->Draw("APSame");
+		//	inputGraph->SetStats(kFALSE);
+			inputGraphError->SetFillStyle(0);
+		//	inputTH1DError->SetLineStyle(2);
+			inputTH1DError->SetFillColor(ii+1);
+		//	inputTH1DError->SetLineColor(ii+1);
+			if(ii==0) inputGraphError->SetFillColor(12);
+			inputGraphError->GetXaxis()->SetLimits(ptRangeLow_*0.9, ptRangeHigh_*1.1);
+			//inputGraphError->Draw("3Same");
+			inputTH1DErrorG->SetStats(kFALSE);
+			inputTH1DErrorG->SetFillStyle(0);
+		//	inputTH1DError->SetLineStyle(2);
+			inputTH1DErrorG->SetFillColor(ii+1);
+		//	inputTH1DError->SetLineColor(ii+1);
+			if(ii==0) inputTH1DErrorG->SetFillColor(12);
+			inputTH1DErrorG->Draw("e3 same");
+			cCanvasG->SetLogy();
+			cCanvasG->SetLogx();
+			lLegG->Draw();
+			cCanvasG->Update();
+			outF_->cd();
+			cCanvasG->Write();
+			cCanvas2G->cd();
+			if(ii==0)
+			{
+				inputGraph->Draw("AP");
+				//inputGraphError->Draw("3Same");
+				inputTH1DErrorG->Draw("e3 same");
+			}
+			if(ii>0)
+			{
+				inputGraph->Draw("PSame");
+				//inputGraphError->Draw("3Same");
+				inputTH1DErrorG->Draw("e3 same");
+			}
+			cCanvas2G->Update();
+			delete cCanvasG;
+			delete lLegG;
 		}
 		cout<<"1";
 		cCanvas2->cd();
 		cCanvas2->SetLogx();
 		lLeg2->Draw();
 		cCanvas2->Update();
+		cCanvas2G->cd();
+		cCanvas2G->SetLogx();
+		lLeg2G->Draw();
+		cCanvas2G->Update();
 		outF_->cd();
 		cCanvas2->Write();
+		cCanvas2G->Write();
 		delete inputTH1D;
+		delete inputGraph;
+		delete inputTH1DError;
+		delete inputGraphError;
 		delete cCanvas2;
+		delete cCanvas2G;
 		delete lLeg2;
+		delete lLeg2G;
 		
 		cout<<"2";
-		TTemp_ = inputFolderNames_[i] + "-pT_Gaus_Sigma_CB";
+		TTemp_ = "EtaBin_"+EtaBin + "-pT_Gaus_Sigma_CB";
 		combinedPlots(th1ds, OutPutD_, TTemp_, true);
 		OutPutD_->mkdir("PUStudies");
 		differencePlots (th1ds, (TDirectory*)OutPutD_->Get("PUStudies"), TTemp_, meanPUs);
 		th1ds.clear();
 		
 	}
+	outF_->Write();
+	outF_->Close();
+}
+
+TGraphErrors* TGraphCreator(TH1D* inputTH1D, unsigned int etabin, unsigned int puBin, TFile* inputFile)
+{
+	if(ptBinTH1Names_.size()==0)
+	{
+		for (unsigned int i=0; i<inputTH1D->GetNbinsX();i++)
+		{
+			ptBinTH1Names_.push_back(Form("MeanPTForBin=%d_%d",(int)inputTH1D->GetBinLowEdge(i),(int)inputTH1D->GetBinLowEdge(i+1)));
+		}
+	}
+	// check if the fit converged if fit status was -2 (failed) the errors will be zero. these points are removed from the interpretation...
+	unsigned int notConvergedBins=0;
+	for(unsigned int i=0; i< inputTH1D->GetNbinsX();i++) if(inputTH1D->GetBinError(i) < 0.000001) notConvergedBins++;
+	TGraphErrors *gr = new TGraphErrors(inputTH1D->GetNbinsX()-notConvergedBins);
+	gr->SetName(inputTH1D->GetName());
+	TString etaFolder("");
+	TString PuFolder("");
+	TString ptBin("");
+	for (unsigned int i=0; i<inputTH1D->GetNbinsX();i++)
+	{
+		ptBin=ptBinTH1Names_[i];
+		if((int)inputTH1D->GetBinLowEdge(i)<0 ) ptBin=Form("MeanPTForBin=0_%d",(int)inputTH1D->GetBinLowEdge(i+1));
+		etaFolder=Form ("%.1f_%.1f", etaBins_[etabin].first, etaBins_[etabin].second);
+		PuFolder=Form ("%.0f_%.0f", lowPuBinEdeges_[puBin].first, lowPuBinEdeges_[puBin].second);
+	//	std::cout<<"Getting ptBin(TH1Name): "<<ptBin<<", from etaFolder: "<<etaFolder<<", from PUFolder: "<<PuFolder<<std::endl;
+		
+		TH1D *tempTH1D = (TH1D*) ((TDirectory*)((TDirectory*) ((TDirectory*) inputFile->Get("PTBinmeans") )->Get(etaFolder))->Get(PuFolder))->Get(ptBin)->Clone();
+		//cout<<"SetPoint i="<<i<<", toX:"<<tempTH1D->GetMean(1)<<std::endl;
+		//cout<<"SetPoint i="<<i<<", toXerror:"<<tempTH1D->GetMeanError(1)<<std::endl;
+		//cout<<"SetPoint i="<<i<<", inY:"<<inputTH1D->GetBinContent(1)<<std::endl;
+		//cout<<"SetPoint i="<<i<<", inYerror:"<<inputTH1D->GetBinError(1)<<std::endl;
+		if(inputTH1D->GetBinError(i) < 0.000001)continue;
+		gr->SetPoint(i,tempTH1D->GetMean(1),inputTH1D->GetBinContent(i));
+		gr->SetPointError(i,tempTH1D->GetMeanError(1),inputTH1D->GetBinError(i));
+		delete tempTH1D;
+	}
+	return gr;
+	
 }
 
 void combinedPlots(vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TString name, bool rename)
@@ -219,6 +559,7 @@ void combinedPlots(vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TString 
 	
 	TCanvas *cCanvas = new TCanvas(name,name);
 	TLegend *lLeg = new TLegend(0.6,0.7,0.9,0.9);
+	lLeg->SetFillColor(0);
 	TH1D *first = new TH1D();
 	for (unsigned int iv=0; iv<th1s.size();iv++)
 	{
@@ -231,7 +572,7 @@ void combinedPlots(vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TString 
 			if (rename) first->SetName("name");
 			if (rename) first->SetTitle(name+";p_{T}");
 			first->SetMarkerColor(1);
-			first->SetMarkerSize(2);
+			first->SetMarkerSize(1);
 			first->SetLineColor(1);
 			first->SetLineWidth(2);
 			first->SetMarkerStyle(21);
@@ -244,7 +585,7 @@ void combinedPlots(vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TString 
 			first->SetLineColor(iv+4);
 			first->SetLineWidth(2);
 			first->SetMarkerColor(iv+4);
-			first->SetMarkerSize(2);
+			first->SetMarkerSize(1);
 			first->SetMarkerStyle(21);
 			lLeg->AddEntry(first,first->GetTitle(),"f");
 			first->Draw("SameP");
@@ -265,6 +606,7 @@ void differencePlots (vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TStri
 {
 	TCanvas *cCanvas = new TCanvas(name,name);
 	TLegend *lLeg = new TLegend(0.6,0.7,0.9,0.9);
+	lLeg->SetFillColor(0);
 	vector<TF1*> fitts;
 	
 	for (unsigned int i=1; i < th1s.size(); i++)
@@ -332,6 +674,7 @@ void differencePlots (vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TStri
 	SigmaGauss->SetBinError(SigmaGauss->GetXaxis()->FindBin(26),fitts[2]->GetParError(0)); */
 	TF1 *linear =  new TF1("Linear",fLinear, 1,100,2);
 	TLegend *lLeg2 = new TLegend(0.6,0.7,0.9,0.9);
+	lLeg2->SetFillColor(0);
 	linear->SetParameters(1,1);
 	linear->FixParameter(0,0);
 	SigmaGauss->Fit(linear,"qNR");
@@ -390,6 +733,7 @@ void PUInclusivePlots (unsigned int parameter, TString parName)
 {	
 	TCanvas *cCanvas = new TCanvas(parName,parName);
 	TLegend *lLeg = new TLegend(0.6,0.7,0.9,0.9);
+	lLeg->SetFillColor(0);
 	outF_->cd();
 	TH1D *TH1DTemp;
 	vector<TF1*> fitts;
@@ -410,13 +754,13 @@ void PUInclusivePlots (unsigned int parameter, TString parName)
 		cCanvas->cd();
 		//(TH1D*) ((TDirectory*) inF_->Get(inputFolderNames_[i]) )->Get(TTemp_)->Clone()
 		TH1DTemp = (TH1D*) ((TDirectory*) inF_->Get(TTemp2))->Get(TTemp)->Clone();
-		if( parameter==4 || parameter==6) TH1DTemp-> Fit(fitts[i],"0R");
+		if( parameter==4 || parameter==6) TH1DTemp-> Fit(fitts[i],"0NR");
 
 		if(i==0)
 		{
 			TH1DTemp->SetMarkerColor(1);
 			TH1DTemp->SetName(parName);
-			TH1DTemp->SetMarkerSize(2);
+			TH1DTemp->SetMarkerSize(1);
 			TH1DTemp->SetLineColor(1);
 			TH1DTemp->SetLineWidth(2);
 			TH1DTemp->SetMarkerStyle(21);
@@ -424,7 +768,7 @@ void PUInclusivePlots (unsigned int parameter, TString parName)
 			if(parameter==4 || parameter==6) 
 			{
 				((TF1*)TH1DTemp->GetFunction("Constant"))->SetLineColor(1);
-				((TF1*)TH1DTemp->GetFunction("Constant"))->Draw("Same");
+				//((TF1*)TH1DTemp->GetFunction("Constant"))->Draw("Same");
 			}
 		}
 		if(i>0)
@@ -433,13 +777,13 @@ void PUInclusivePlots (unsigned int parameter, TString parName)
 			TH1DTemp->SetLineColor(i+4);
 			TH1DTemp->SetLineWidth(2);
 			TH1DTemp->SetMarkerColor(i+4);
-			TH1DTemp->SetMarkerSize(2);
+			TH1DTemp->SetMarkerSize(1);
 			TH1DTemp->SetMarkerStyle(21);
 			TH1DTemp->Draw("SameP");
 			if(parameter==4 || parameter==6) 
 			{
 				((TF1*)TH1DTemp->GetFunction("Constant"))->SetLineColor(i+4);
-				((TF1*)TH1DTemp->GetFunction("Constant"))->Draw("Same");
+				//((TF1*)TH1DTemp->GetFunction("Constant"))->Draw("Same");
 			}
 		}
 		n = sprintf(buffer,"Eta:%d",i); // mean1
@@ -488,9 +832,19 @@ Double_t fSigma3Terms (Double_t *x, Double_t *par) // sqrt([0]^2 + [1]^2/x + [2]
 	Double_t result = sqrt(par[0] *par[0] + par[2]*par[2]/(x[0]*x[0])+ par[1]*par[1]/x[0]);
 	return result;
 }
+Double_t fSigma3TermsMinus (Double_t *x, Double_t *par) // sqrt([0]^2 + [1]^2/x + [2]^2/x^2)
+{
+	Double_t result = sqrt(par[0] *par[0] + TMath::Sign(1.,par[2]) * par[2]*par[2]/(x[0]*x[0])+ par[1]*par[1]/x[0]);
+	return result;
+}
 Double_t fSigma4Terms (Double_t *x, Double_t *par) // sqrt([0]^2 + [1]^2/x + [2]^2/x^2 + [3]^2/x^2
 {
 	Double_t result = sqrt(par[0] *par[0] + par[2]*par[2]/(x[0]*x[0])+ par[1]*par[1]/x[0] + par[3] * par[3]/(x[0] * x[0]));
+	return result;
+}
+Double_t fSigma4TermsMinus (Double_t *x, Double_t *par) // sqrt([0]^2 + [1]^2/x + [2]^2/x^2 + [3]^2/x^2
+{
+	Double_t result = sqrt(par[0] *par[0] + TMath::Sign(1.,par[2]) * par[2]*par[2]/(x[0]*x[0])+ par[1]*par[1]/x[0] + par[3] * par[3]/(x[0] * x[0]));
 	return result;
 }
 Double_t exp0 (Double_t *x, Double_t *par)

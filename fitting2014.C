@@ -5,7 +5,7 @@ void fitting2014()
 // define constants and names
 	debug_=false; // use if you want addional information
 	gROOT->SetBatch(true);
-	inF_ = TFile::Open("KalibriPlots_PU_Eta.root","UPDATE"); // input file 
+	inF_ = TFile::Open("KalibriPlots_PU_Eta26Bins.root","UPDATE"); // input file 
 	outF_ = new TFile("Fitting2014.root","RECREATE"); // file to store output in
 	outF_->mkdir("FitFunctions"); // stores example plots of the used functions
 	std::vector<TString> cbNames;
@@ -21,7 +21,35 @@ void fitting2014()
 	quantilesLow_=0.0005; quantilesHigh_=0.9999995;
 	lowPTConstFit_=30; highPTConstFit_=1200;
 	// input folder structure
-	inputFolderNames_.push_back("MCTruthResolPUEta0"); inputFolderNames_.push_back("MCTruthResolPUEta1"); inputFolderNames_.push_back("MCTruthResolPUEta2"); inputFolderNames_.push_back("MCTruthResolPUEta3"); inputFolderNames_.push_back("MCTruthResolPUEta4"); 
+	/*inputFolderNames_.push_back("MCTruthResolPUEta0"); inputFolderNames_.push_back("MCTruthResolPUEta1"); inputFolderNames_.push_back("MCTruthResolPUEta2"); inputFolderNames_.push_back("MCTruthResolPUEta3"); inputFolderNames_.push_back("MCTruthResolPUEta4"); 
+	*/
+	inputFolderNames_.push_back("MCTruthResolPUEta00"); 	etaBins_.push_back(std::make_pair(0.0,0.1) );
+	inputFolderNames_.push_back("MCTruthResolPUEta01"); 	etaBins_.push_back(std::make_pair(0.1,0.2) );
+	inputFolderNames_.push_back("MCTruthResolPUEta02"); 	etaBins_.push_back(std::make_pair(0.2,0.3) );
+	inputFolderNames_.push_back("MCTruthResolPUEta03"); 	etaBins_.push_back(std::make_pair(0.3,0.4) );
+	inputFolderNames_.push_back("MCTruthResolPUEta04"); 	etaBins_.push_back(std::make_pair(0.4,0.5) );
+	inputFolderNames_.push_back("MCTruthResolPUEta05"); 	etaBins_.push_back(std::make_pair(0.5,0.6) );
+	inputFolderNames_.push_back("MCTruthResolPUEta06"); 	etaBins_.push_back(std::make_pair(0.6,0.7) );
+	inputFolderNames_.push_back("MCTruthResolPUEta07"); 	etaBins_.push_back(std::make_pair(0.7,0.8) );
+	inputFolderNames_.push_back("MCTruthResolPUEta08"); 	etaBins_.push_back(std::make_pair(0.8,0.9) );
+	inputFolderNames_.push_back("MCTruthResolPUEta09"); 	etaBins_.push_back(std::make_pair(0.9,1.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta10"); 	etaBins_.push_back(std::make_pair(1.0,1.1) );
+	inputFolderNames_.push_back("MCTruthResolPUEta11"); 	etaBins_.push_back(std::make_pair(1.1,1.2) );
+	inputFolderNames_.push_back("MCTruthResolPUEta12"); 	etaBins_.push_back(std::make_pair(1.2,1.3) );
+	inputFolderNames_.push_back("MCTruthResolPUEta13"); 	etaBins_.push_back(std::make_pair(1.3,1.4) );
+	inputFolderNames_.push_back("MCTruthResolPUEta14"); 	etaBins_.push_back(std::make_pair(1.4,1.5) );
+	inputFolderNames_.push_back("MCTruthResolPUEta15"); 	etaBins_.push_back(std::make_pair(1.5,1.6) );
+	inputFolderNames_.push_back("MCTruthResolPUEta16"); 	etaBins_.push_back(std::make_pair(1.6,1.7) );
+	inputFolderNames_.push_back("MCTruthResolPUEta17"); 	etaBins_.push_back(std::make_pair(1.7,1.8) );
+	inputFolderNames_.push_back("MCTruthResolPUEta18"); 	etaBins_.push_back(std::make_pair(1.8,1.9) );
+	inputFolderNames_.push_back("MCTruthResolPUEta19"); 	etaBins_.push_back(std::make_pair(1.9,2.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta20"); 	etaBins_.push_back(std::make_pair(2.0,2.1) );
+	inputFolderNames_.push_back("MCTruthResolPUEta21"); 	etaBins_.push_back(std::make_pair(2.1,2.2) );
+	inputFolderNames_.push_back("MCTruthResolPUEta22"); 	etaBins_.push_back(std::make_pair(2.2,2.3) );
+	inputFolderNames_.push_back("MCTruthResolPUEta23"); 	etaBins_.push_back(std::make_pair(2.3,2.4) );
+	inputFolderNames_.push_back("MCTruthResolPUEta24"); 	etaBins_.push_back(std::make_pair(2.4,2.5) );
+	inputFolderNames_.push_back("MCTruthResolPUEta25"); 	etaBins_.push_back(std::make_pair(2.5,3.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta26"); 	etaBins_.push_back(std::make_pair(3.0,5.0) );
 	inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU0"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU1"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU2"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU3"); 
 	cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); // same order as value definiton in cb funciton Normierung N gaus mean, gaus sigma, n1,alpha1,n2,alph2
 	
@@ -109,6 +137,10 @@ void fitting2014()
 			cbValues_[iii]->SetTitle(TTemp_);
 			cbValues_[iii]->Write();
 		}
+		TTemp_ = "CB_Chi2OverNDF_"+inputFolderNames_[i] + "_PUInclusiveFits";
+		cbValues_[7]->SetName(TTemp_);
+		cbValues_[7]->SetTitle(TTemp_);
+		cbValues_[7]->Write();
 		cbValues_.clear();
 	}
 
@@ -151,6 +183,8 @@ void fitting2014()
 					cbValues_[iv]->SetBinError(iii,th1fCBPar46EtaDependentConstantFitFix[iii]->GetParError(iv));
 					//cout<<"resultCBValues::bin iv="<<iv<<":"<<th1fCBPar46EtaDependentConstantFitFix[iii]->GetParameter(iv)<<"+-"<<th1fCBPar46EtaDependentConstantFitFix[iii]->GetParError(iv)<<endl;
 				}
+				if(th1fCBPar46EtaDependentConstantFitFix[iii]->GetNDF()>0.1)cbValues_[7]->SetBinContent(iii,th1fCBPar46EtaDependentConstantFitFix[iii]->GetChisquare()/th1fCBPar46EtaDependentConstantFitFix[iii]->GetNDF());
+				else cbValues_[7]->SetBinContent(iii,0.00001);
 			}
 			FixToLinearFitPUInclusiveEtaBined46->cd();
 			for(int iii=0; iii <7;iii++) 
@@ -161,6 +195,10 @@ void fitting2014()
 				cbValues_[iii]->SetTitle(TTemp_);
 				cbValues_[iii]->Write();
 			}
+			TTemp_ = "CB_Chi2OverNDF_"+inputFolderNames_[i] + "_" + inputTH2Names_[ii];
+			cbValues_[7]->SetName(TTemp_);
+			cbValues_[7]->SetTitle(TTemp_);
+			cbValues_[7]->Write();
 			cbValues_.clear();
 			
 			// do the fitting for the different fixed parameters
@@ -186,6 +224,8 @@ void fitting2014()
 					cbValues_[iv]->SetBinError(iii,th1fCBPar46EtaPTDependent[iii]->GetParError(iv));
 					//cout<<"resultCBValues::bin iv="<<iv<<":"<<th1fCBPar46EtaDependentConstantFitFix[iii]->GetParameter(iv)<<"+-"<<th1fCBPar46EtaDependentConstantFitFix[iii]->GetParError(iv)<<endl;
 				}
+				if(th1fCBPar46EtaDependentConstantFitFix[iii]->GetNDF()>0.1)cbValues_[7]->SetBinContent(iii,th1fCBPar46EtaDependentConstantFitFix[iii]->GetChisquare()/th1fCBPar46EtaDependentConstantFitFix[iii]->GetNDF());
+				else cbValues_[7]->SetBinContent(iii,0.00001);
 			}
 			FixToPTPUInclusiveEtaBined46->cd();
 			for(int iii=0; iii <7;iii++) 
@@ -196,6 +236,10 @@ void fitting2014()
 				cbValues_[iii]->SetTitle(TTemp_);
 				cbValues_[iii]->Write();
 			}
+			TTemp_ = "CB_Chi2OverNDF_"+inputFolderNames_[i] + "_" + inputTH2Names_[ii];
+			cbValues_[7]->SetName(TTemp_);
+			cbValues_[7]->SetTitle(TTemp_);
+			cbValues_[7]->Write();
 			cbValues_.clear();
 			
 			// do the fitting for non fixed fitting
@@ -221,6 +265,8 @@ void fitting2014()
 					cbValues_[iv]->SetBinError(iii,th1fCBNoFix[iii]->GetParError(iv));
 					//cout<<"resultCBValues::bin iv="<<iv<<":"<<th1fCBPar46EtaDependentConstantFitFix[iii]->GetParameter(iv)<<"+-"<<th1fCBPar46EtaDependentConstantFitFix[iii]->GetParError(iv)<<endl;
 				}
+				if(th1fCBPar46EtaDependentConstantFitFix[iii]->GetNDF()>0.1)cbValues_[7]->SetBinContent(iii,th1fCBPar46EtaDependentConstantFitFix[iii]->GetChisquare()/th1fCBPar46EtaDependentConstantFitFix[iii]->GetNDF());
+				else cbValues_[7]->SetBinContent(iii,0.00001);
 			}
 			NoFixFitting->cd();
 			for(int iii=0; iii <7;iii++) 
@@ -231,6 +277,10 @@ void fitting2014()
 				cbValues_[iii]->SetTitle(TTemp_);
 				cbValues_[iii]->Write();
 			}
+			TTemp_ = "CB_Chi2OverNDF_"+inputFolderNames_[i] + "_" + inputTH2Names_[ii];
+			cbValues_[7]->SetName(TTemp_);
+			cbValues_[7]->SetTitle(TTemp_);
+			cbValues_[7]->Write();
 			cbValues_.clear();
 			
 			
@@ -264,6 +314,7 @@ bool exampleFunctions(TDirectory *OutPutF)
 	TTemp_ = buffer_;
 	TLegend *legCB = new TLegend(0.6,0.7,0.9,0.9);
 	legCB->AddEntry(fCB,TTemp_,"f");
+	legCB->SetFillColor(0);
 	legCB->Draw();
 	temp->Update();
 	temp->Write();
@@ -305,6 +356,7 @@ vector<TH1D*> th1creator ( TH2D *inputTH2D, TDirectory *outPutFolder)
 		c2 = new TCanvas("PT_"+temp1+"_"+temp2,"PT=["+temp1+","+temp2+"]",0,0,700,900);
 		c2->cd();
 		TLegend *leg2 = new TLegend(0.6,0.7,0.9,0.9);
+		leg2->SetFillColor(0);
 		leg2->AddEntry(output1, output1->GetTitle(),"f");
 		for (unsigned int ii=0;ii<nbinsY;ii++)
 		{
@@ -323,6 +375,8 @@ vector<TH1D*> th1creator ( TH2D *inputTH2D, TDirectory *outPutFolder)
 	TH1D *cbValues4 = new TH1D("CBValue4","CBValue4",nbinsX,xbins);
 	TH1D *cbValues5 = new TH1D("CBValue5","CBValue5",nbinsX,xbins);
 	TH1D *cbValues6 = new TH1D("CBValue6","CBValue6",nbinsX,xbins);
+	TH1D *cbValues7 = new TH1D("CBChiSqOverNDF","CBChiSqOverNDF",nbinsX,xbins);
+	//TH1D *cbValues8 = new TH1D("CBChiSqOverNDF","CBChiSqOverNDF",nbinsX,xbins);
 	cbValues_.push_back(cbValues);
 	cbValues_.push_back(cbValues1);
 	cbValues_.push_back(cbValues2);
@@ -330,6 +384,8 @@ vector<TH1D*> th1creator ( TH2D *inputTH2D, TDirectory *outPutFolder)
 	cbValues_.push_back(cbValues4);
 	cbValues_.push_back(cbValues5);
 	cbValues_.push_back(cbValues6);
+	cbValues_.push_back(cbValues7);
+	//cbValues_.push_back(cbValues8);
 	return result;
 }
 TF1* cbFitting(TH1D *th1D, std::vector<double> cbFixValues, bool useFixValues)
@@ -550,6 +606,7 @@ void writeTH1D(TH1D* inputTH1D, TDirectory *outPutFolder, std::vector<TString> F
 	TString TTemp("");
 	TCanvas *cCanvas = new TCanvas(inputTH1D->GetName(),inputTH1D->GetTitle());
 	TLegend *lLeg = new TLegend(0.6,0.7,0.9,0.9);
+	lLeg->SetFillColor(0);
 	cCanvas->cd();
 	inputTH1D->Draw("P");
 	lLeg->AddEntry(inputTH1D,"Entries","f");
