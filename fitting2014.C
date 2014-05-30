@@ -5,12 +5,18 @@ void fitting2014()
 // define constants and names
 	debug_=false; // use if you want addional information
 	gROOT->SetBatch(true);
-	inF_ = TFile::Open("KalibriPlots_PU_Eta26Bins.root","UPDATE"); // input file 
+	inF_ = TFile::Open("KalibriPlots_PU_Eta28Bins.root","UPDATE"); // input file 
 	outF_ = new TFile("Fitting2014.root","RECREATE"); // file to store output in
 	outF_->mkdir("FitFunctions"); // stores example plots of the used functions
 	std::vector<TString> cbNames;
 	cbNames.push_back("CrystalBallFix");
 	cbNames.push_back("CrystalBall");
+	// ouput text file for error messages
+	Fitting2014errorReport = new ofstream("ErrorsFromfitting2014.txt");
+	if(Fitting2014errorReport->is_open() ) std::cout<<"FileOpendForErrorOutPut"<<std::endl;
+	*Fitting2014errorReport << "----------------- fitting2014 started--------------\n";
+	*Fitting2014errorReport << "This file containes error messages and warnings.\n";
+	*Fitting2014errorReport << "In particular warnings are saved if a free fit did not converge and the previous fix fit is being stored instead.\n";
 	//
 	TString truthPileUpFolderAndName ("MCTruthResponseVsNPUTruth/MCTruthResponseVsNPUTruth_Z2star_NPUTruthSpectrum");
 	//set parameters
@@ -48,8 +54,10 @@ void fitting2014()
 	inputFolderNames_.push_back("MCTruthResolPUEta22"); 	etaBins_.push_back(std::make_pair(2.2,2.3) );
 	inputFolderNames_.push_back("MCTruthResolPUEta23"); 	etaBins_.push_back(std::make_pair(2.3,2.4) );
 	inputFolderNames_.push_back("MCTruthResolPUEta24"); 	etaBins_.push_back(std::make_pair(2.4,2.5) );
-	inputFolderNames_.push_back("MCTruthResolPUEta25"); 	etaBins_.push_back(std::make_pair(2.5,3.0) );
-	inputFolderNames_.push_back("MCTruthResolPUEta26"); 	etaBins_.push_back(std::make_pair(3.0,5.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta25"); 	etaBins_.push_back(std::make_pair(2.5,2.8) );
+	inputFolderNames_.push_back("MCTruthResolPUEta26"); 	etaBins_.push_back(std::make_pair(2.8,3.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta27"); 	etaBins_.push_back(std::make_pair(3.0,3.2) );
+	inputFolderNames_.push_back("MCTruthResolPUEta28"); 	etaBins_.push_back(std::make_pair(3.2,5.0) );
 	inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU0"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU1"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU2"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU3"); 
 	cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); cbFixValues_.push_back(-10000); // same order as value definiton in cb funciton Normierung N gaus mean, gaus sigma, n1,alpha1,n2,alph2
 	
@@ -151,15 +159,19 @@ void fitting2014()
 	for (unsigned int i=0; i < inputFolderNames_.size(); i++)
 	{
 		cout<<"Starting folder:"<<inputFolderNames_[i]<<"!!!!"<<endl;
+		*Fitting2014errorReport <<"inputFolderNames_["<<i<<"]="<<inputFolderNames_[i]<<" opend...";
 		// create output folder for each Eta bin
 		//outF_->mkdir(inputFolderNames_[i]); laready done in inclusive pu operation see above
 		EtaFolder = (TDirectory*) outF_->Get(inputFolderNames_[i]);
+		*Fitting2014errorReport<<" EtaFolder->Name()"<<EtaFolder->GetName()<<"\n";
 		for(unsigned int ii=0; ii < inputTH2Names_.size();ii++)
 		{
-			cout<<"Starting folder:"<<inputTH2Names_[i]<<"!!!!"<<endl;
+			*Fitting2014errorReport<<"inputTH2Names_["<<ii<<"]="<<inputTH2Names_[ii]<<"Opend...";
+			cout<<"Starting folder:"<<inputTH2Names_[ii]<<"!!!!"<<endl;
 			EtaFolder->mkdir(inputTH2Names_[ii]);
 			PUFolder = (TDirectory*) EtaFolder->Get(inputTH2Names_[ii]);
 			TTemp_ = inputFolderNames_[i] +"_" + inputTH2Names_[ii];
+			CurrentFolder_ = TTemp_;
 			TH2D *inputTH2DTemp = (TH2D*) ((TDirectory*) inF_->Get(inputFolderNames_[i]) )->Get(TTemp_)->Clone();
 			// do the fitting for the different fixed parameters
 			// first for const fitted 4 and 6 parameter for pileup inclusive input 
@@ -286,6 +298,7 @@ void fitting2014()
 			
 			
 		}
+		*Fitting2014errorReport<<"\n";
 	}
 
 }
@@ -581,6 +594,67 @@ TF1* cbFitting(TH1D *th1D, std::vector<double> cbFixValues, bool useFixValues)
 	std::cout<<"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! end of fitting!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"<<std::endl;
 	fcbFix->SetLineColor(3);
 	fcb2->SetLineColor(2);
+	if( resultprint2.Status()<0)
+	{
+		ROOT::Math::WrappedMultiTF1 wCB3(*fcbFix,1);
+		ROOT::Fit::DataOptions opt3; 
+		ROOT::Fit::DataRange rangeTH1d3;
+		rangeTH1d3.SetRange(yq[0],yq[1]);
+		ROOT::Fit::BinData dataTH1d3(opt3,rangeTH1d3);
+		ROOT::Fit::FillData(dataTH1d3, th1D);
+		ROOT::Fit::Chi2Function chi2_CB3(dataTH1d3, wCB3);
+		ROOT::Fit::Fitter fitter3;
+//		fitter3.Config().MinimizerOptions().SetMinimizerType("GSLSimAn");
+		fitter3.Config().SetMinimizer("Minuit2", "Fumili2");
+		fitter3.Config().SetParamsSettings(7,parametersd);
+		ROOT::Math::Minimizer* min3 = fitter3.Config().CreateMinimizer();
+		min3->SetMaxIterations(10000);
+		min3->SetTolerance(0.001);
+		min3->SetValidError(true);
+		for(unsigned int i=0; i < 7;i++)
+		{
+
+			if(resultprint.Parameter(i)>0 )
+			{
+				fitter3.Config().ParSettings(i).SetLimits(resultprint.Parameter(i)*0.1,resultprint2.Parameter(i)*10);
+				std::cout<<"Limits par["<<i<<"]: "<<resultprint.Parameter(i)*0.1<<" "<<resultprint.Parameter(i)*10<<std::endl;
+			}
+			if(resultprint.Parameter(i)<0 )
+			{
+				fitter3.Config().ParSettings(i).SetLimits(resultprint.Parameter(i)*10,resultprint2.Parameter(i)*0.1);
+				std::cout<<"Limits par["<<i<<"]: "<<resultprint.Parameter(i)*10<<" "<<resultprint.Parameter(i)*0.1<<std::endl;
+			}
+		}
+		fitter3.Config().ParSettings(3).SetLimits(0.1,40);
+		fitter3.Config().ParSettings(5).SetLimits(0.1,40);
+		for(unsigned int i=0; i < 7;i++) std::cout<<"fitter3 limits par["<<i<<"] is bound: "<<fitter3.Config().ParSettings(i).IsBound()<<", is fixed: "<<fitter3.Config().ParSettings(i).IsFixed()<<" lowerLimit: "<<fitter3.Config().ParSettings(i).LowerLimit()<<" upperLimit: "<<fitter3.Config().ParSettings(i).UpperLimit()<<std::endl;
+		fitter3.FitFCN(chi2_CB3,parametersd,dataTH1d3.Size(),true);
+		ROOT::Fit::FitResult resultprint3 = fitter3.Result();
+		resultprint3.Print(std::cout);
+		fcb2->SetFitResult( resultprint3, 0);
+		for (int i=0;i <7;i++)
+		{
+			parametersd[i]=resultprint3.Parameter(i);
+			fcb2->FixParameter(i,resultprint3.Parameter(i));
+			if(debug_) cout<<"Parameter:"<<i<<":value="<<resultprint3.Parameter(i)<<"+-"<<resultprint3.ParError(i)<<" ";
+			fcb2->SetParError(i,resultprint3.ParError(i));
+		}
+		fcb2->SetNDF(resultprint3.Ndf());
+		fcb2->SetChisquare(resultprint3.Chi2());
+		
+		
+		*Fitting2014errorReport <<"Warning free fit did not converge for:\n";
+		*Fitting2014errorReport <<"CurrentFolder:"<<CurrentFolder_<<"\n";
+		*Fitting2014errorReport <<"th1D->GetName():"<<th1D->GetName()<<"\n";
+		*Fitting2014errorReport <<"Using now Minut2 with Migrad: (status:"<<resultprint2.Status()<<"):\n";
+		for(int i=0; i<7; i++)*Fitting2014errorReport <<"Par["<<i<<"]: "<<resultprint2.Parameter(i)<<" +- "<<resultprint2.ParError(i)<<"\n";
+		*Fitting2014errorReport <<"Genetic(status:"<<resultprint.Status()<<")\n";
+		for(int i=0; i<7; i++)*Fitting2014errorReport <<"Par["<<i<<"]: "<<resultprint.Parameter(i)<<" +- "<<resultprint.ParError(i)<<"\n";
+		*Fitting2014errorReport <<"Minuit2(status:"<<resultprint3.Status()<<")\n";
+		for(int i=0; i<7; i++)*Fitting2014errorReport <<"Par["<<i<<"]: "<<resultprint3.Parameter(i)<<" +- "<<resultprint3.ParError(i)<<"\n";
+		for(unsigned int i=0; i < 7;i++) *Fitting2014errorReport<<"fitter3 limits par["<<i<<"] is bound: "<<fitter3.Config().ParSettings(i).IsBound()<<", is fixed: "<<fitter3.Config().ParSettings(i).IsFixed()<<" lowerLimit: "<<fitter3.Config().ParSettings(i).LowerLimit()<<" upperLimit: "<<fitter3.Config().ParSettings(i).UpperLimit()<<"\n";
+		*Fitting2014errorReport <<"Updated!\n"<<std::flush;
+	}
 	th1D->GetListOfFunctions()->Add(fcbFix);
 	th1D->GetListOfFunctions()->Add(fcb2);
 	std::cout<<"Resulting parameters: ";
