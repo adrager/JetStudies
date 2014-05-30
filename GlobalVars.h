@@ -5,6 +5,7 @@
 #include <iostream>
 #include "TStyle.h"
 #include <ostream>
+#include <iostream>
 #include <fstream> 
 #include <string.h>
 #include <TTree.h>
@@ -51,9 +52,11 @@ double lowPTConstFit_, highPTConstFit_;
 vector<TH1D*> cbValues_;
 vector<double> cbFixValues_;
 vector<double> etaDeptendentFixValues_;
+TString CurrentFolder_("");
 // input output file folders
 TDirectory *InputD_, *OutPutD_;
 TFile *outF_, *inF_;
+ofstream *Fitting2014errorReport;
 // methods
 bool exampleFunctions(TDirectory *OutPutF);
 vector<TH1D*> th1creator ( TH2D *inputTH2D, TDirectory *outPutFolder);

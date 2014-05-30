@@ -21,6 +21,7 @@
    TString outPutFileName_;
    TFile *outPutFile_;
    TH1StoringClass *th1Results_;
+   TH2D *RhoVsNpu_;
 class DiJetSelector : public TSelector {
 public :
    TTree          *fChain;   //!pointer to the analyzed TTree or TChain

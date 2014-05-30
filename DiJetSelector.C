@@ -30,6 +30,7 @@
 
 void DiJetSelector::Begin(TTree * /*tree*/)
 {
+std::cout<<"At DiJetSelector::Begin etaBins_.size(): "<<etaBins_.size()<<std::endl;
 	inputFolderNames_.push_back("MCTruthResolPUEta00"); 	etaBins_.push_back(std::make_pair(0.0,0.1) );
 	inputFolderNames_.push_back("MCTruthResolPUEta01"); 	etaBins_.push_back(std::make_pair(0.1,0.2) );
 	inputFolderNames_.push_back("MCTruthResolPUEta02"); 	etaBins_.push_back(std::make_pair(0.2,0.3) );
@@ -55,8 +56,10 @@ void DiJetSelector::Begin(TTree * /*tree*/)
 	inputFolderNames_.push_back("MCTruthResolPUEta22"); 	etaBins_.push_back(std::make_pair(2.2,2.3) );
 	inputFolderNames_.push_back("MCTruthResolPUEta23"); 	etaBins_.push_back(std::make_pair(2.3,2.4) );
 	inputFolderNames_.push_back("MCTruthResolPUEta24"); 	etaBins_.push_back(std::make_pair(2.4,2.5) );
-	inputFolderNames_.push_back("MCTruthResolPUEta25"); 	etaBins_.push_back(std::make_pair(2.5,3.0) );
-	inputFolderNames_.push_back("MCTruthResolPUEta26"); 	etaBins_.push_back(std::make_pair(3.0,5.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta25"); 	etaBins_.push_back(std::make_pair(2.5,2.8) );
+	inputFolderNames_.push_back("MCTruthResolPUEta26"); 	etaBins_.push_back(std::make_pair(2.8,3.0) );
+	inputFolderNames_.push_back("MCTruthResolPUEta27"); 	etaBins_.push_back(std::make_pair(3.0,3.2) );
+	inputFolderNames_.push_back("MCTruthResolPUEta28"); 	etaBins_.push_back(std::make_pair(3.2,5.0) );
 	inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU0"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU1"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU2"); inputTH2Names_.push_back("GenJetResponseVsGenJetPt_Z2star_L2L3_NPU3"); 
 	lowPuBinEdeges_.push_back(0); lowPuBinEdeges_.push_back(10); lowPuBinEdeges_.push_back(20); lowPuBinEdeges_.push_back(30); lowPuBinEdeges_.push_back(50);
    std::cout<<"Starting DiJetSelector to determine the composition of events in each PT bin"<<std::endl;
@@ -64,7 +67,7 @@ void DiJetSelector::Begin(TTree * /*tree*/)
    TDirectory *EtaFolder = new TDirectory();
    TDirectory *PuInclusiveFolder = new TDirectory();
    TDirectory *PUFolder = new TDirectory();
-   inF_ = TFile::Open("KalibriPlots_PU_Eta26Bins.root","UPDATE");
+   inF_ = TFile::Open("KalibriPlots_PU_Eta28Bins.root","UPDATE");
    
    TTemp_ = inputFolderNames_[0] +"_" + inputTH2Names_[0];
    std::cout<<"Opening TH2D: inF_->Get("<<inputFolderNames_[0]<<") )->Get("<<TTemp_<<")->Clone()"<<std::endl;
@@ -108,7 +111,6 @@ void DiJetSelector::Begin(TTree * /*tree*/)
 	   }
 	   
    }
-
    std::map<unsigned int,std::map<unsigned int,TH1D*> > mapPUOfEta_;
    for (unsigned int i=0; i<inputTH2Names_.size(); i++)
    {
@@ -123,7 +125,7 @@ void DiJetSelector::Begin(TTree * /*tree*/)
 	   }
 	   mapPUOfEta_[i] = mapOfEta;
    }
-
+   RhoVsNpu_ = new TH2D("RhoVsNpu","RhoVsNpu",100,0,100,100,0,100);
    TString option = GetOption();
    std::cout<<"Done: starting prediction"<<std::endl;
 count=0;
@@ -147,6 +149,8 @@ Bool_t DiJetSelector::Process(Long64_t entry)
 	if(count==1000) {std::cout<<"|";count=0;}
 	if(NobjGenJet<3)return kTRUE;
 	double NPU = PUMCNumVtx+0.001;
+	RhoVsNpu_->Fill(Rho,NPU);
+
 	for (unsigned in=0; in<2; in++)
 	{
 		double genJetPt=GenJetPt[in];
@@ -173,7 +177,10 @@ void DiJetSelector::Terminate()
 std::cout<<"DiJetSelector done startintg termiate process..."<<std::endl;
    TFile *outF = new TFile("PTBinsMeans.root","RECREATE");
    outF->mkdir("PTBinmeans");
+
    TDirectory *ptBinOut = (TDirectory*) outF->Get("PTBinmeans");
+   ptBinOut->cd();
+   RhoVsNpu_->Write();
    th1Results_->SaveResultToFile(ptBinOut);
    std::cout<<"Done exiting DiJetSelector"<<std::endl;
 

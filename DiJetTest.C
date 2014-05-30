@@ -64,8 +64,10 @@ void DiJetTest()
 	etaBins_.push_back(std::make_pair(2.2,2.3) );
 	etaBins_.push_back(std::make_pair(2.3,2.4) );
 	etaBins_.push_back(std::make_pair(2.4,2.5) );
-	etaBins_.push_back(std::make_pair(2.5,3.0) );
-	etaBins_.push_back(std::make_pair(3.0,5.0) );
+	etaBins_.push_back(std::make_pair(2.5,2.8) );
+	etaBins_.push_back(std::make_pair(2.8,3.0) );
+	etaBins_.push_back(std::make_pair(3.0,3.2) );
+	etaBins_.push_back(std::make_pair(3.2,5.0) );
 	lowPuBinEdeges_.push_back(0); lowPuBinEdeges_.push_back(10); lowPuBinEdeges_.push_back(20); lowPuBinEdeges_.push_back(30); lowPuBinEdeges_.push_back(50);
 	
 	
@@ -74,6 +76,7 @@ void DiJetTest()
 	// starting recomputing eff and expectation
 	std::cout<<"Started"<<std::endl;
 	TChain analyseDataChain2("DiJetTree");
-	analyseDataChain2.Add("/nfs/dust/test/cms/user/adraeger/kalibri/nTuples/MC/Z2star_pythia_v3/Summer12_DR53X_QCD_Pt-15to3000_TuneZ2star_Flat_8TeV_pythia6_v3_ak5PFCHS.root");
+	analyseDataChain2.Add("/nfs/dust/cms/user/adraeger/kalibri/nTuples/MC/Z2star_pythia_v3/Summer12_DR53X_QCD_Pt-15to3000_TuneZ2star_Flat_8TeV_pythia6_v3_ak5PFCHS.root");
+//	analyseDataChain2.Add("/nfs/dust/cms/user/adraeger/kalibri/nTuples/MC/Z2star_pythia_v3/Summer12_DR53X_QCD_Pt-15to3000_TuneZ2star_Flat_8TeV_pythia6_v3_ak5FastPF.root");
 	analyseDataChain2.Process("DiJetSelector.C+");
 }
