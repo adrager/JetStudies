@@ -48,16 +48,18 @@ vector<std::pair <double,double> > lowPuBinEdeges_;
 vector<std::pair <double,double> > etaBins_;
 std::vector<TString> ptBinTH1Names_;
 char buffer_[100];
+int restart_;
 int n_;
 TString TTemp_("");
 vector<TH1D*> cbValues_;
 vector<double> meanPUs_;
+double error_;
 TH1D *npuVSRho_;
 vector<TH1D*> cbForFourDMinimizer_;
 vector<TString> inputFolderNames_, inputTH2Names_;
-ofstream *FittingAnalyzer2014ErrorReport, *FitResults;
+fstream *FittingAnalyzer2014ErrorReport, *FitResults;
 // input output file folders
-TDirectory *InputD_, *OutPutD_;
+TDirectory *InputD_, *OutPutD_, *OutResults_;
 TFile *outF_, *inF_;
 // methods
 //bool exampleFunctions(TDirectory *OutPutF);
@@ -76,6 +78,7 @@ Double_t fSigma3TermsMinus (Double_t *x, Double_t *par);
 Double_t fSigma4Terms (Double_t *x, Double_t *par);
 Double_t fSigma4TermsMinus (Double_t *x, Double_t *par);
 double fourDminimizer(const double *par);
+double fourDminimizerFlexError(const double *par);
 Double_t TwoDSigmaFitFunction(Double_t *x,Double_t *par);
 TGraphErrors* TGraphCreator(TH1D* inputTH1D, unsigned int etabin, unsigned int puBin, TFile* inputFile);
 void combinedPlots(vector<TH1D*> th1s, TDirectory *outPutFolderSpecial, TString name, bool rename);
@@ -91,33 +94,34 @@ void PUInclusivePlots (unsigned int parameter, TString parName);
 
 void fittingAnalyzer2014()
 {
+	error_=1;  // this error is used in the fourDminimizerFlexError determination. The value is increased until chi2/NDF reaches 1
+	restart_=1;
 	gROOT->SetBatch(true);
 	ptRangeLow_=20;
 	ptRangeHigh_=1200;
 	cout<<"Analyzer started..."<<endl;
 
+	gStyle->SetOptStat(0);
 	inF_ = TFile::Open("Fitting2014.root","UPDATE");
 	TFile * ptMeanFile = TFile::Open("PTBinsMeans.root","UPDATE");
 	npuVSRho_ = (TH1D*) ptMeanFile->Get("npuVsRho");
 	int nn = sprintf(buffer_,"Results2014_ptRange_%.0f_%.0f.root",ptRangeLow_,ptRangeHigh_); // mean1
-	FittingAnalyzer2014ErrorReport = new ofstream("FittingAnalyzer2014ErrorReport.txt");
+	FittingAnalyzer2014ErrorReport = new fstream("FittingAnalyzer2014ErrorReport.txt");
 	if(FittingAnalyzer2014ErrorReport->is_open() ) std::cout<<"FittingAnalyzer2014ErrorReport"<<std::endl;
 	*FittingAnalyzer2014ErrorReport << "----------------- fittingAnalyzer2014 started--------------\n";
 	*FittingAnalyzer2014ErrorReport << "This file containes error messages and warnings.\n";
 	*FittingAnalyzer2014ErrorReport << "In particular warnings are saved if a free fit did not converge these entries have an error of 0 they will be reported.\n";
 	
-	FitResults = new ofstream("FitResults.txt");
+	FitResults = new fstream("FitResults.txt");
 	if(FitResults->is_open() ) std::cout<<"FitResults opend"<<std::endl;
-	*FitResults << "[resolution]\n";
-	*FitResults << "\n";
-	*FitResults << "[1 |JetEta| 1 JetPt 1 NPU  CBGaussSigma Resolution sigma]\n";
-	*FitResults << "[sigma]\n";
-	*FitResults << "{1  |JetEta|  1 JetPt    NPU    (sqrt([0] *[0] + [1]*[1]/x[0] + TMath::Sign(1.,[2]) * ([2])*([2])/(x[0]*x[0]) + ([3]*sqrt(x[1])) * ([3]*sqrt(x[1]))/(x[0]*x[0])) ) PAR0 \\sigma } \n";
+	*FitResults << "{1 JetEta 2 JetPt NPU sqrt([0]*[0]+[1]*[1]/x+TMath::Sign(1.,[2])*([2])*([2])/(x*x)+([3]*sqrt(y))*([3]*sqrt(y))/(x*x)) Resolution Sigma}  \n";
 	
 	TTemp_ = buffer_;
 	outF_ = new TFile(TTemp_,"RECREATE");
 	outF_->mkdir(TTemp_);
 	OutPutD_ = (TDirectory*)outF_->Get(TTemp_);
+	outF_->mkdir("Results");
+	OutResults_ = (TDirectory*)outF_->Get("Results");
 	TH1D *TruthPUMeans = (TH1D*) inF_->Get("TruthPUMeans")->Clone();
 	for(int i=0; i < 4; i++)
 	{
@@ -183,9 +187,61 @@ void fittingAnalyzer2014()
 	TH1D *resultParChi2 = new TH1D("resultParChi2","resultParChi2; |#eta|;chi2/NDF",etaBins_.size(),etaBins);
 	TCanvas *resultCanvasComparePU10 = new TCanvas("PU10Compare","PU10Compare",200,10,700,500);
 	TLegend *resultLegendComparePU10 = new TLegend(0.3,0.7,0.9,0.9);
-	
+	resultLegendComparePU10->SetFillColor(0);
 	TCanvas *resultCanvasComparePU30 = new TCanvas("PU30Compare","PU30Compare",200,10,700,500);
 	TLegend *resultLegendComparePU30 = new TLegend(0.3,0.7,0.9,0.9);
+	resultLegendComparePU30->SetFillColor(0);
+	
+	vector<TH1D*> ResultForPT30;
+	vector<TH1D*> ResultForPT30Ch2Small;
+	vector<TH1D*> ResultForPT100;
+	vector<TH1D*> ResultForPT100Ch2Small;
+	vector<TH1D*> ResultForPT300;
+	vector<TH1D*> ResultForPT300Ch2Small;
+	vector<TH1D*> ResultForPT500;
+	vector<TH1D*> ResultForPT500Ch2Small;
+	vector<TH1D*> ResultForPT2000;
+	vector<TH1D*> ResultForPT2000Ch2Small;
+	
+	vector<TH1D*> ResultForE200;
+	vector<TH1D*> ResultForE200Ch2Small;
+	TH1D* AdditionalError =  new TH1D("AdditionalError","AdditionalError; |#eta|; %",etaBins_.size(),etaBins);
+	for(unsigned int i=0; i<lowPuBinEdeges_.size();i++)
+	{
+
+		ResultForPT30.push_back(new TH1D("ResultForPT30","ResultForPT30; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT30Ch2Small.push_back(new TH1D("ResultForPT30Small","ResultForPT30Small; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT100.push_back(new TH1D("ResultForPT100","ResultForPT100; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT100Ch2Small.push_back(new TH1D("ResultForPT100Small","ResultForPT100Small; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT300.push_back(new TH1D("ResultForPT300","ResultForPT300; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT300Ch2Small.push_back(new TH1D("ResultForPT300Small","ResultForPT300Small; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT500.push_back(new TH1D("ResultForPT500","ResultForPT500; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT500Ch2Small.push_back(new TH1D("ResultForPT500Ch2Small","ResultForPT500Ch2Small; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT2000.push_back(new TH1D("ResultForPT2000","ResultForPT2000; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForPT2000Ch2Small.push_back(new TH1D("ResultForPT2000Small","ResultForPT2000Ch2Small; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForE200.push_back(new TH1D("ResultForE200","ResultForE200; |#eta|;#sigma",etaBins_.size(),etaBins));
+		ResultForE200Ch2Small.push_back(new TH1D("ResultForE200Ch2Small","ResultForE200Ch2Small; |#eta|;#sigma",etaBins_.size(),etaBins));
+		
+	}
+	TCanvas *resultCanvasEtaComparePt30 = new TCanvas("EtaCompare30GeV","EtaCompare30GeV",200,10,700,500);
+	TLegend *resultLegendEtaComparePt30 = new TLegend(0.3,0.7,0.9,0.9);
+	resultLegendEtaComparePt30->SetFillColor(0);
+	TCanvas *resultCanvasEtaComparePt100 = new TCanvas("EtaComparePt100GeV","EtaComparePt100GeV",200,10,700,500);
+	TLegend *resultLegendEtaComparePt100 = new TLegend(0.3,0.7,0.9,0.9);
+	resultLegendEtaComparePt100->SetFillColor(0);
+	TCanvas *resultCanvasEtaComparePt300 = new TCanvas("EtaCompare300GeV","EtaCompare300GeV",200,10,700,500);
+	TLegend *resultLegendEtaComparePt300 = new TLegend(0.3,0.7,0.9,0.9);
+	resultLegendEtaComparePt300->SetFillColor(0);
+	TCanvas *resultCanvasEtaComparePt500 = new TCanvas("EtaCompare500GeV","EtaCompare500GeV",200,10,700,500);
+	TLegend *resultLegendEtaComparePt500 = new TLegend(0.3,0.7,0.9,0.9);
+	resultLegendEtaComparePt500->SetFillColor(0);
+	TCanvas *resultCanvasEtaComparePt2000 = new TCanvas("EtaCompare2000GeV","EtaCompare2000GeV",200,10,700,500);
+	TLegend *resultLegendEtaComparePt2000 = new TLegend(0.3,0.7,0.9,0.9);
+	resultLegendEtaComparePt2000->SetFillColor(0);
+	TCanvas *resultCanvasEtaCompareE200 = new TCanvas("EtaCompareE200GeV","EtaCompareE200GeV",200,10,700,500);
+	TLegend *resultLegendEtaCompareE200 = new TLegend(0.3,0.7,0.9,0.9);
+	resultLegendEtaCompareE200->SetFillColor(0);
+	
 	cout<<"1";
 	PUInclusivePlots(0,"Normalization");
 	PUInclusivePlots(1,"Gaus Mean");
@@ -610,10 +666,51 @@ void fittingAnalyzer2014()
 		const double *pars = min3->X();
 		const double *parsError = min3->Errors();
 		std::cout << "Free Minuit2:" << pars[0] << "," << pars[1] << "," << pars[2] << ","<< pars[3] << std::endl;
+		*FittingAnalyzer2014ErrorReport <<"Fit for Eta: "<<etaTString <<" Status: Fit1(Genetic):"<<min->Status()<<" fit2(Genetic): "<<min2->Status()<<" fit3(Minuit2, Migrad): "<<min3->Status()<<"\n";
 		//*FitResults<<"Combined free Minuit2 fit Result: C="<<pars[0]<<" S:"<<pars[1]<<" N:"<<pars[2]<<" PU"<<pars[3]<<"\n";
 		*FitResults <<setw(7)<<etaTString;
 		*FitResults <<setw(3)<<"8"<<setw(6)<<"10"<<setw(6)<<"9999"<<setw(6)<<"0"<<setw(6)<<"120";
 		*FitResults<<setw(14)<<pars[0]<<setw(10)<<pars[1]<<setw(10)<<pars[2]<<setw(10)<<pars[3]<<"\n";
+		*FittingAnalyzer2014ErrorReport<<setw(7)<<etaTString;
+		*FittingAnalyzer2014ErrorReport <<setw(3)<<"8"<<setw(6)<<"10"<<setw(6)<<"9999"<<setw(6)<<"0"<<setw(6)<<"120";
+		*FittingAnalyzer2014ErrorReport<<setw(14)<<pars[0]<<setw(10)<<pars[1]<<setw(10)<<pars[2]<<setw(10)<<pars[3];
+		if(min3->NFree()>0) *FittingAnalyzer2014ErrorReport<<setw(10)<<min3->MinValue()/min3->NFree()<<"\n";
+		else *FittingAnalyzer2014ErrorReport<<"\n";
+		//*FitResults<<"\n";
+		ROOT::Math::Minimizer* min4 = ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad");
+		min4->SetMaxFunctionCalls(1000000);
+		min4->SetPrintLevel(0);
+		ROOT::Math::Functor f4(&fourDminimizerFlexError,4);
+		min4->SetFunction(f4);
+		min4->SetLimitedVariable(0,"x",pars4[0],0.00001,pars4[0]*0.8,pars4[0]*1.2);
+		min4->SetLimitedVariable(1,"y",pars4[1],0.00001,pars4[1]*0.8,pars4[1]*1.2);
+		if(pars4[2]>0)min4->SetLimitedVariable(2,"z",pars4[2],0.00001,pars4[2]*0.8,pars4[2]*1.2);
+		if(pars4[2]<0)min4->SetLimitedVariable(2,"z",pars4[2],0.00001,pars4[2]*1.2,pars4[2]*0.8);
+		if(pars4[3]>0)min4->SetLimitedVariable(3,"w",pars4[3],0.00001,pars4[3]*0.8,pars4[3]*1.2);
+		if(pars4[3]<0)min4->SetLimitedVariable(3,"w",pars4[3],0.00001,pars4[3]*1.2,pars4[3]*0.8);
+		error_=0.001;
+		double chi2_NDF=999;
+		int iterations=0;
+		for (int ii=0; chi2_NDF>1;ii++)
+		{
+			
+			min4->Minimize();
+			error_=error_+0.0001;
+			if(min4->NFree()>0 && min4->Status()>-1) chi2_NDF= min4->MinValue()/min4->NFree();
+			iterations++;
+			if (iterations>10000) break;
+		}
+		const double *pars5 = min4->X();
+		AdditionalError->SetBinContent(i+1,error_);
+		if(pars[0]!=pars[0])
+		{
+			cout<<"Final fit for this eta bin did not converge! Please restart program"<<std::endl;
+			*FittingAnalyzer2014ErrorReport <<"Final fit for this eta bin did not converge! Please restart program\n";
+		}
+		*FittingAnalyzer2014ErrorReport <<setw(7)<<etaTString;
+		*FittingAnalyzer2014ErrorReport <<setw(3)<<"8"<<setw(6)<<"10"<<setw(6)<<"9999"<<setw(6)<<"0"<<setw(6)<<"120";
+		*FittingAnalyzer2014ErrorReport<<setw(14)<<pars5[0]<<setw(10)<<pars5[1]<<setw(10)<<pars5[2]<<setw(10)<<pars5[3]<<setw(10)<<" "<<chi2_NDF<<setw(10)<<"  "<<error_<<"\n";
+		
 		// set results for the reult plot
 		resultParC->SetBinContent(i+1,pars[0]);
 		resultParC->SetBinError(i+1,parsError[0]);
@@ -654,6 +751,7 @@ void fittingAnalyzer2014()
 		// draw the results
 		TCanvas *cCanvasCombined = new TCanvas("Eta_"+etaTString,"Eta_"+etaTString,200,10,700,500);
 		TLegend *lLegCombined = new TLegend(0.3,0.7,0.9,0.9);
+		lLegCombined->SetFillColor(0);
 		cCanvasCombined->SetLogx();
 		cCanvasCombined->SetLogy();
 		for(unsigned int ii=0; ii <cbForFourDMinimizer_.size(); ii++)
@@ -668,14 +766,21 @@ void fittingAnalyzer2014()
 			twoSigma->FixParameter(2,pars[2]);
 			twoSigma->FixParameter(3,pars[3]);
 			twoSigma->FixParameter(4,meanPUs_[ii]);
+			TF1 *twoSigmaSmallChi2 = new TF1 ("twoSigmaSmallChi2",TwoDSigmaFitFunction, ptRangeLow_,ptRangeHigh_,5);
+			twoSigmaSmallChi2->FixParameter(0,pars5[0]);
+			twoSigmaSmallChi2->FixParameter(1,pars5[1]);
+			twoSigmaSmallChi2->FixParameter(2,pars5[2]);
+			twoSigmaSmallChi2->FixParameter(3,pars5[3]);
+			twoSigmaSmallChi2->FixParameter(4,meanPUs_[ii]);
 			//cbForFourDMinimizer_[i]->GetListOfFunctions()->Add(twoSigma);
 			cCanvas3->cd();
+			for (int iii=0; iii< cbForFourDMinimizer_[ii]->GetNbinsX(); iii++) if(cbForFourDMinimizer_[ii]->GetBinError(iii)> 0.0000001) cbForFourDMinimizer_[ii]->SetBinError(iii,sqrt( cbForFourDMinimizer_[ii]->GetBinError(iii) * cbForFourDMinimizer_[ii]->GetBinError(iii) + error_*error_) );
 			if(cbForFourDMinimizer_[ii]->GetFunction("fNoPUMinus"))cbForFourDMinimizer_[ii]->GetFunction("fNoPUMinus")->SetBit(TF1::kNotDraw);
 			if(cbForFourDMinimizer_[ii]->GetFunction("PileUpIncluded"))cbForFourDMinimizer_[ii]->GetFunction("PileUpIncluded")->SetBit(TF1::kNotDraw);
 			cbForFourDMinimizer_[ii]->DrawCopy();
 			twoSigma->SetLineColor(ii+1);
 			twoSigma->Draw("Same");
-			TString tttemp = Form("C=%.4f, S=%.4f, N=%.3f, PUTerm=%.3f, MeanPU=%.0f",pars[0],pars[1],pars[2],pars[3],meanPUs_[ii]);
+			TString tttemp = Form("C=%.3f, S=%.3f, N=%.3f, PUTerm=%.3f, MeanPU=%.0f, Add.Error=%.1f%%",pars[0],pars[1],pars[2],pars[3],meanPUs_[ii], error_*100);
 			lLeg3->AddEntry(twoSigma,tttemp);
 			cCanvas3->SetLogx();
 			cCanvas3->SetLogy();
@@ -690,6 +795,119 @@ void fittingAnalyzer2014()
 			lLegCombined->AddEntry(twoSigma,tttemp);
 			delete cCanvas3;
 			delete lLeg3;
+			double eta = etaBins_[i].first +(etaBins_[i].second-etaBins_[i].first)/2;
+			double expp = TMath::Exp(-eta);
+			double theta= TMath::ATan(expp) *2.0;
+			double e30= 30/TMath::Sin(theta);
+			cout<<"e30 for, eta: "<<eta<<" exp(-eta):"<<expp<<"theta: "<<theta<<" =e30: "<<e30<<endl;
+			double e = 100;
+			double pt= 200 * TMath::Sin(theta);
+			
+			ResultForE200[ii]->SetBinContent(i,twoSigma->Eval(pt));
+			ResultForE200[ii]->SetMarkerColor(1);
+			ResultForE200[ii]->SetMarkerSize(2);
+			ResultForE200[ii]->SetLineColor(ii+1);
+			ResultForE200[ii]->SetLineWidth(0);
+			ResultForE200[ii]->SetMarkerStyle(20);
+			ResultForE200[ii]->SetMarkerSize(1);
+			ResultForE200[ii]->SetMarkerColor(ii+1);
+			ResultForE200Ch2Small[ii]->SetBinContent(i,twoSigmaSmallChi2->Eval(pt));
+			ResultForE200Ch2Small[ii]->SetMarkerColor(1);
+			ResultForE200Ch2Small[ii]->SetMarkerSize(1);
+			ResultForE200Ch2Small[ii]->SetLineColor(ii+1);
+			ResultForE200Ch2Small[ii]->SetLineWidth(0);
+			ResultForE200Ch2Small[ii]->SetLineStyle(2);
+			ResultForE200Ch2Small[ii]->SetMarkerStyle(20);
+			ResultForE200Ch2Small[ii]->SetMarkerSize(1);
+			ResultForE200Ch2Small[ii]->SetMarkerColor(ii+1);
+			
+			ResultForPT30[ii]->SetBinContent(i,twoSigma->Eval(30));
+			ResultForPT30[ii]->SetMarkerColor(1);
+			ResultForPT30[ii]->SetMarkerSize(2);
+			ResultForPT30[ii]->SetLineColor(ii+1);
+			ResultForPT30[ii]->SetLineWidth(0);
+			ResultForPT30[ii]->SetMarkerStyle(20);
+			ResultForPT30[ii]->SetMarkerSize(1);
+			ResultForPT30[ii]->SetMarkerColor(ii+1);
+			ResultForPT100[ii]->SetBinContent(i,twoSigma->Eval(100));
+			ResultForPT100[ii]->SetMarkerColor(1);
+			ResultForPT100[ii]->SetMarkerSize(2);
+			ResultForPT100[ii]->SetLineColor(ii+1);
+			ResultForPT100[ii]->SetLineWidth(0);
+			ResultForPT100[ii]->SetMarkerStyle(20);
+			ResultForPT100[ii]->SetMarkerSize(1);
+			ResultForPT100[ii]->SetMarkerColor(ii+1);
+			ResultForPT300[ii]->SetBinContent(i,twoSigma->Eval(300));
+			ResultForPT300[ii]->SetMarkerColor(1);
+			ResultForPT300[ii]->SetMarkerSize(2);
+			ResultForPT300[ii]->SetLineColor(ii+1);
+			ResultForPT300[ii]->SetLineWidth(0);
+			ResultForPT300[ii]->SetMarkerStyle(20);
+			ResultForPT300[ii]->SetMarkerSize(1);
+			ResultForPT300[ii]->SetMarkerColor(ii+1);
+			
+			ResultForPT30Ch2Small[ii]->SetBinContent(i,twoSigmaSmallChi2->Eval(30));
+			ResultForPT30Ch2Small[ii]->SetMarkerColor(1);
+			ResultForPT30Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT30Ch2Small[ii]->SetLineColor(ii+1);
+			ResultForPT30Ch2Small[ii]->SetLineWidth(0);
+			ResultForPT30Ch2Small[ii]->SetLineStyle(2);
+			ResultForPT30Ch2Small[ii]->SetMarkerStyle(20);
+			ResultForPT30Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT30Ch2Small[ii]->SetMarkerColor(ii+1);
+			ResultForPT100Ch2Small[ii]->SetBinContent(i,twoSigmaSmallChi2->Eval(100));
+			ResultForPT100Ch2Small[ii]->SetMarkerColor(1);
+			ResultForPT100Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT100Ch2Small[ii]->SetLineColor(ii+1);
+			ResultForPT100Ch2Small[ii]->SetLineWidth(0);
+			ResultForPT100Ch2Small[ii]->SetLineStyle(2);
+			ResultForPT100Ch2Small[ii]->SetMarkerStyle(20);
+			ResultForPT100Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT100Ch2Small[ii]->SetMarkerColor(ii+1);
+			ResultForPT300Ch2Small[ii]->SetBinContent(i,twoSigmaSmallChi2->Eval(300));
+			ResultForPT300Ch2Small[ii]->SetMarkerColor(1);
+			ResultForPT300Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT300Ch2Small[ii]->SetLineColor(ii+1);
+			ResultForPT300Ch2Small[ii]->SetLineWidth(0);
+			ResultForPT300Ch2Small[ii]->SetLineStyle(2);
+			ResultForPT300Ch2Small[ii]->SetMarkerStyle(20);
+			ResultForPT300Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT300Ch2Small[ii]->SetMarkerColor(ii+1);
+			
+			ResultForPT500[ii]->SetBinContent(i,twoSigma->Eval(500));
+			ResultForPT500[ii]->SetMarkerColor(1);
+			ResultForPT500[ii]->SetMarkerSize(2);
+			ResultForPT500[ii]->SetLineColor(ii+1);
+			ResultForPT500[ii]->SetLineWidth(0);
+			ResultForPT500[ii]->SetMarkerStyle(20);
+			ResultForPT500[ii]->SetMarkerSize(1);
+			ResultForPT500[ii]->SetMarkerColor(ii+1);
+			ResultForPT500Ch2Small[ii]->SetBinContent(i,twoSigmaSmallChi2->Eval(500));
+			ResultForPT500Ch2Small[ii]->SetMarkerColor(1);
+			ResultForPT500Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT500Ch2Small[ii]->SetLineColor(ii+1);
+			ResultForPT500Ch2Small[ii]->SetLineWidth(0);
+			ResultForPT500Ch2Small[ii]->SetLineStyle(2);
+			ResultForPT500Ch2Small[ii]->SetMarkerStyle(20);
+			ResultForPT500Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT500Ch2Small[ii]->SetMarkerColor(ii+1);
+			ResultForPT2000[ii]->SetBinContent(i,twoSigma->Eval(2000));
+			ResultForPT2000[ii]->SetMarkerColor(1);
+			ResultForPT2000[ii]->SetMarkerSize(2);
+			ResultForPT2000[ii]->SetLineColor(ii+1);
+			ResultForPT2000[ii]->SetLineWidth(0);
+			ResultForPT2000[ii]->SetMarkerStyle(20);
+			ResultForPT2000[ii]->SetMarkerSize(1);
+			ResultForPT2000[ii]->SetMarkerColor(ii+1);
+			ResultForPT2000Ch2Small[ii]->SetBinContent(i,twoSigmaSmallChi2->Eval(2000));
+			ResultForPT2000Ch2Small[ii]->SetMarkerColor(1);
+			ResultForPT2000Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT2000Ch2Small[ii]->SetLineColor(ii+1);
+			ResultForPT2000Ch2Small[ii]->SetLineWidth(0);
+			ResultForPT2000Ch2Small[ii]->SetLineStyle(2);
+			ResultForPT2000Ch2Small[ii]->SetMarkerStyle(20);
+			ResultForPT2000Ch2Small[ii]->SetMarkerSize(1);
+			ResultForPT2000Ch2Small[ii]->SetMarkerColor(ii+1);
 			
 		}
 		lLegCombined->Draw();
@@ -730,8 +948,109 @@ void fittingAnalyzer2014()
 		th1ds.clear();
 		
 	}
+	// draw the result for pt50 and pt150 vs eta for all PU
+	for (unsigned int i=0; i< lowPuBinEdeges_.size()-1; i++)
+	{
+		std::cout<<"drawing ["<<i<<"]: bin edges["<<lowPuBinEdeges_[i].first<<","<<lowPuBinEdeges_[i].second<<"]"<<endl;
+		TString npuTString=Form ("NPU[%.0f,%.0f]", lowPuBinEdeges_[i].first, lowPuBinEdeges_[i].second);
+		resultCanvasEtaComparePt30->cd();
+		if(i==0)
+		{
+			ResultForPT30[i]->SetMaximum(ResultForPT30[i]->GetMaximum()*1.5);
+			ResultForPT30[i]->Draw();
+		}
+		ResultForPT30Ch2Small[i]->Draw("Same");
+		if(i>0)ResultForPT30[i]->Draw("Same");
+		resultLegendEtaComparePt30->AddEntry(ResultForPT30[i],npuTString,"f");
+		resultLegendEtaComparePt30->AddEntry(ResultForPT30Ch2Small[i],npuTString+"_Chi2=1","f");
+		resultCanvasEtaComparePt100->cd();
+		if(i==0)
+		{
+			ResultForPT100[i]->Draw();
+			ResultForPT100[i]->SetMaximum(ResultForPT100[i]->GetMaximum()*1.5);
+		}
+		ResultForPT100Ch2Small[i]->Draw("Same");
+		if(i>0)ResultForPT100[i]->Draw("Same");
+		resultLegendEtaComparePt100->AddEntry(ResultForPT100[i],npuTString,"f");
+		resultLegendEtaComparePt100->AddEntry(ResultForPT100Ch2Small[i],npuTString+"_Chi2=1","f");	
+		resultCanvasEtaComparePt300->cd();
+		if(i==0)
+		{
+			ResultForPT300[i]->Draw();
+			ResultForPT300[i]->SetMaximum(ResultForPT300[i]->GetMaximum()*1.5);
+		}
+		ResultForPT300Ch2Small[i]->Draw("Same");
+		if(i>0)ResultForPT300[i]->Draw("Same");
+		resultLegendEtaComparePt300->AddEntry(ResultForPT300[i],npuTString,"f");
+		resultLegendEtaComparePt300->AddEntry(ResultForPT300Ch2Small[i],npuTString+"_Chi2=1","f");
+		resultCanvasEtaComparePt500->cd();
+		if(i==0)
+		{
+			ResultForPT500[i]->Draw();
+			ResultForPT500[i]->SetMaximum(ResultForPT500[i]->GetMaximum()*1.5);
+		}
+		ResultForPT500Ch2Small[i]->Draw("Same");
+		if(i>0)ResultForPT500[i]->Draw("Same");
+		resultLegendEtaComparePt500->AddEntry(ResultForPT500[i],npuTString,"f");
+		resultLegendEtaComparePt500->AddEntry(ResultForPT500Ch2Small[i],npuTString+"_Chi2=1","f");
+		resultCanvasEtaComparePt2000->cd();
+		if(i==0)
+		{
+			ResultForPT2000[i]->Draw();
+			ResultForPT2000[i]->SetMaximum(ResultForPT2000[i]->GetMaximum()*1.5);
+		}
+		ResultForPT2000Ch2Small[i]->Draw("Same");
+		if(i>0)ResultForPT2000[i]->Draw("Same");
+		resultLegendEtaComparePt2000->AddEntry(ResultForPT2000[i],npuTString,"f");
+		resultLegendEtaComparePt2000->AddEntry(ResultForPT2000Ch2Small[i],npuTString+"_Chi2=1","f");
+		
+		resultCanvasEtaCompareE200->cd();
+		if(i==0)
+		{
+			ResultForE200[i]->Draw();
+			ResultForE200[i]->SetMaximum(ResultForE200[i]->GetMaximum()*1.5);
+		}
+		ResultForE200Ch2Small[i]->Draw("Same");
+		if(i>0)ResultForE200[i]->Draw("Same");
+		resultLegendEtaCompareE200->AddEntry(ResultForE200[i],npuTString,"f");
+		resultLegendEtaCompareE200->AddEntry(ResultForE200Ch2Small[i],npuTString+"_Chi2=1","f");
+	}
+	OutResults_->cd();
+	AdditionalError->Write();
+	resultCanvasEtaComparePt30->cd();
+	resultLegendEtaComparePt30->Draw();
+	resultCanvasEtaComparePt30->Update();
+
+	resultCanvasEtaComparePt100->cd();
+	resultLegendEtaComparePt100->Draw();
+	resultCanvasEtaComparePt300->cd();
+	resultLegendEtaComparePt300->Draw();
+	resultCanvasEtaComparePt500->cd();
+	resultLegendEtaComparePt500->Draw();
+	resultCanvasEtaComparePt2000->cd();
+	resultLegendEtaComparePt2000->Draw();
+	resultCanvasEtaCompareE200->cd();
+	resultLegendEtaCompareE200->Draw();
 	cout<<"Almost finished"<<endl;
-	outF_->cd();
+
+	resultCanvasEtaComparePt30->Write();
+	resultCanvasEtaComparePt30->SaveAs("resultCanvasEtaComparePt30.png");
+	resultCanvasEtaComparePt30->SaveAs("resultCanvasEtaComparePt30.pdf");
+	resultCanvasEtaComparePt100->Write();
+	resultCanvasEtaComparePt100->SaveAs("resultCanvasEtaComparePt100.png");
+	resultCanvasEtaComparePt100->SaveAs("resultCanvasEtaComparePt100.pdf");
+	resultCanvasEtaComparePt300->Write();
+	resultCanvasEtaComparePt300->SaveAs("resultCanvasEtaComparePt300.png");
+	resultCanvasEtaComparePt300->SaveAs("resultCanvasEtaComparePt300.pdf");
+	resultCanvasEtaComparePt500->Write();
+	resultCanvasEtaComparePt500->SaveAs("resultCanvasEtaComparePt500.png");
+	resultCanvasEtaComparePt500->SaveAs("resultCanvasEtaComparePt500.pdf");
+	resultCanvasEtaComparePt2000->Write();
+	resultCanvasEtaComparePt2000->SaveAs("resultCanvasEtaComparePt2000.png");
+	resultCanvasEtaComparePt2000->SaveAs("resultCanvasEtaComparePt2000.pdf");
+	resultCanvasEtaCompareE200->Write();
+	resultCanvasEtaCompareE200->SaveAs("resultCanvasEtaCompareE200.png");
+	resultCanvasEtaCompareE200->SaveAs("resultCanvasEtaCompareE200.pdf");
 	resultParC->Write();
 	cout<<"1";
 	resultParS->Write();	cout<<"2";
@@ -756,10 +1075,19 @@ void fittingAnalyzer2014()
 	resultCanvasComparePU30->Update();
 	resultCanvasComparePU30->Write();
 	cout<<"7";
+	outF_->cd();
 	outF_->Write();
 	outF_->Close();
 	FittingAnalyzer2014ErrorReport->close();
+	string line;
+	if(FitResults->is_open())
+	{
+		FitResults->seekg(0,FitResults->beg);
+		while (getline (*FitResults,line)) cout<<line<<endl;
+	}
+	else cout<<"File not opend output not printed out please see FitResults.txt file"<<std::endl;
 	FitResults->close();
+
 }
 
 TGraphErrors* TGraphCreator(TH1D* inputTH1D, unsigned int etabin, unsigned int puBin, TFile* inputFile)
@@ -1156,4 +1484,43 @@ double fourDminimizer(const double *par)  // par[0]=Const, par[1]=Stochastic, pa
 	}
 	return result;
 }
+
+
+double fourDminimizerFlexError(const double *par)  // par[0]=Const, par[1]=Stochastic, par[2]=NoiseTerm, par[3]= term to descripe PU contribution
+{
+	double result=0;
+	double bincontent=0;
+	double bincenter=0;
+	double binerror=0;
+	double puMean=0;
+	double funcValue=0;
+	if(cbForFourDMinimizer_.size()==0) 
+	{
+		std::cout<<"fourDminimizer::Error cbForFourDMinimizer_ is empty!"<<std::endl;
+		*FitResults<<"fourDminimizer::Error cbForFourDMinimizer_ is empty!\n";
+	}
+	if(meanPUs_.size()==0) 
+	{
+		std::cout<<"fourDminimizer::Error meanPUs_ is empty!"<<std::endl;
+		*FitResults<<"fourDminimizer::Error meanPUs_ is empty!\n";
+	}
+	for(unsigned int i=0; i< cbForFourDMinimizer_.size(); i++)
+	{
+		puMean = meanPUs_[i];
+//		*FitResults<<"fourDminimizer::puMean"<<puMean<<"\n";
+		for (int ii=0; ii< cbForFourDMinimizer_[i]->GetNbinsX();ii++)
+		{
+			if(cbForFourDMinimizer_[i]->GetBinError(ii)< 0.0000001) continue;
+			if(cbForFourDMinimizer_[i]->GetBinCenter(ii)<ptRangeLow_ || cbForFourDMinimizer_[i]->GetBinCenter(ii)>ptRangeHigh_)continue;
+			bincontent = cbForFourDMinimizer_[i]->GetBinContent(ii);
+			bincenter = cbForFourDMinimizer_[i]->GetBinCenter(ii);
+			binerror = cbForFourDMinimizer_[i]->GetBinError(ii);
+			binerror = binerror;
+			funcValue = sqrt(par[0] *par[0] + par[1]*par[1]/bincenter + TMath::Sign(1.,par[2]) * (par[2])*(par[2])/(bincenter*bincenter) + (par[3]*sqrt(puMean)) * (par[3]*sqrt(puMean))/(bincenter*bincenter));
+			result+= (funcValue - bincontent) * (funcValue - bincontent) / ( (binerror * binerror) + (error_ * error_) ) ;
+		}
+	}
+	return result;
+}
+
 

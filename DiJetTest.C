@@ -76,7 +76,7 @@ void DiJetTest()
 	// starting recomputing eff and expectation
 	std::cout<<"Started"<<std::endl;
 	TChain analyseDataChain2("DiJetTree");
-	analyseDataChain2.Add("/nfs/dust/cms/user/adraeger/kalibri/nTuples/MC/Z2star_pythia_v3/Summer12_DR53X_QCD_Pt-15to3000_TuneZ2star_Flat_8TeV_pythia6_v3_ak5PFCHS.root");
-//	analyseDataChain2.Add("/nfs/dust/cms/user/adraeger/kalibri/nTuples/MC/Z2star_pythia_v3/Summer12_DR53X_QCD_Pt-15to3000_TuneZ2star_Flat_8TeV_pythia6_v3_ak5FastPF.root");
+//	analyseDataChain2.Add("/nfs/dust/cms/user/adraeger/kalibri/nTuples/MC/Z2star_pythia_v3/Summer12_DR53X_QCD_Pt-15to3000_TuneZ2star_Flat_8TeV_pythia6_v3_ak5PFCHS.root");
+	analyseDataChain2.Add("/nfs/dust/cms/user/adraeger/kalibri/nTuples/MC/Z2star_pythia_v3/Summer12_DR53X_QCD_Pt-15to3000_TuneZ2star_Flat_8TeV_pythia6_v3_ak5FastPF.root");
 	analyseDataChain2.Process("DiJetSelector.C+");
 }
